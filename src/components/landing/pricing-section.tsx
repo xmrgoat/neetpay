@@ -13,17 +13,17 @@ export function PricingSection() {
   return (
     <section className="py-24 sm:py-32 border-t border-border">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mx-auto max-w-2xl text-center mb-12">
-          <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            Simple, transparent pricing
+        <div className="mb-12">
+          <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
+            Flat fee. Not a percentage.
           </h2>
-          <p className="mt-4 text-lg text-foreground-secondary">
-            Start free. Scale when you need to. No hidden fees.
+          <p className="mt-4 text-lg text-foreground-secondary max-w-lg">
+            At $3,000/month in volume, you pay $29. A 1% processor charges $30 — just for that month.
           </p>
         </div>
 
         {/* Toggle */}
-        <div className="flex items-center justify-center gap-3 mb-12">
+        <div className="flex items-center gap-3 mb-12">
           <button
             onClick={() => setAnnual(false)}
             className={cn(
@@ -37,7 +37,7 @@ export function PricingSection() {
             onClick={() => setAnnual(!annual)}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              annual ? "bg-primary" : "bg-border-strong"
+              annual ? "bg-primary" : "bg-border"
             )}
             aria-label="Toggle annual billing"
           >
@@ -56,14 +56,14 @@ export function PricingSection() {
             )}
           >
             Annual
-            <span className="ml-1.5 text-xs text-primary">Save 17%</span>
+            <span className="ml-1.5 text-xs text-primary">2 months free</span>
           </button>
         </div>
 
         {/* Cards */}
         <div
           ref={gridRef}
-          className="grid gap-8 max-w-5xl mx-auto sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-4 max-w-5xl sm:grid-cols-2 lg:grid-cols-3"
         >
           <div data-pricing-card>
             <PricingCard {...PRICING_PLANS.free} annual={annual} />

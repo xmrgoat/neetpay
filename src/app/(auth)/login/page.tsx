@@ -40,11 +40,11 @@ export default function LoginPage() {
 
   return (
     <>
-      <h1 className="font-heading text-2xl font-semibold tracking-tight text-center">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">
         Welcome back
       </h1>
-      <p className="mt-2 text-sm text-foreground-secondary text-center">
-        Sign in to your account
+      <p className="mt-2 text-sm text-foreground-secondary">
+        Sign in to your neetpay account
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -52,6 +52,7 @@ export default function LoginPage() {
           label="Email"
           name="email"
           type="email"
+          placeholder="you@example.com"
           required
           autoComplete="email"
         />
@@ -59,24 +60,31 @@ export default function LoginPage() {
           label="Password"
           name="password"
           type="password"
+          placeholder="Your password"
           required
           autoComplete="current-password"
           minLength={6}
         />
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <div className="rounded-lg border border-error/20 bg-error-muted px-3 py-2">
+            <p className="text-sm text-error">{error}</p>
+          </div>
         )}
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full h-10"
+          loading={loading}
+        >
           {loading ? "Signing in..." : "Sign in"}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-foreground-secondary">
+      <p className="mt-6 text-sm text-foreground-secondary">
         Don&apos;t have an account?{" "}
         <Link href="/register" className="text-primary hover:underline">
-          Sign up
+          Create one
         </Link>
       </p>
     </>

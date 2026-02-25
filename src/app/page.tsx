@@ -9,23 +9,25 @@ import { SecuritySection } from "@/components/landing/security-section";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
+import { MobileCtaBar } from "@/components/landing/mobile-cta-bar";
 
 export default function HomePage() {
   return (
     <>
       <Navbar />
-      <main>
+      <main className="pb-16 md:pb-0">
         <TerminalHero />
         <SocialProofBar />
         <FeaturesSection />
         <HowItWorks />
-        <StatsSection />
         <DeveloperSection />
         <SecuritySection />
+        <StatsSection />
         <PricingSection />
         <CtaSection />
       </main>
       <Footer />
+      <MobileCtaBar />
     </>
   );
 }

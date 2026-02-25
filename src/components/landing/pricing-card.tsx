@@ -25,11 +25,22 @@ export function PricingCard({
   const currentPrice = annual ? priceAnnual : price;
   const period = annual ? "/year" : "/month";
   const isEnterprise = name === "Enterprise";
+  const isFree = name === "Starter";
+
+  const ctaLabel = isEnterprise
+    ? "Talk to us"
+    : isFree
+      ? "Start for free"
+      : "Start Pro — cancel anytime";
+
+  const ctaHref = isEnterprise
+    ? "mailto:hello@neetpay.com"
+    : "/register";
 
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl border border-border bg-surface p-8",
+        "relative flex flex-col rounded-2xl border border-border bg-surface p-8 transition-colors hover:border-border-hover",
         recommended && "border-t-2 border-t-primary"
       )}
     >
@@ -40,7 +51,7 @@ export function PricingCard({
       )}
 
       {/* Plan name */}
-      <p className="text-xs font-medium uppercase tracking-widest text-foreground-secondary">
+      <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted">
         {name}
       </p>
 
@@ -64,12 +75,12 @@ export function PricingCard({
       <p className="text-sm text-foreground-secondary mb-8">{description}</p>
 
       {/* CTA */}
-      <Link href={isEnterprise ? "#contact" : "/register"} className="mb-8">
+      <Link href={ctaHref} className="mb-8">
         <Button
           variant={recommended ? "primary" : "secondary"}
           className="w-full"
         >
-          {isEnterprise ? "Contact us" : "Get started"}
+          {ctaLabel}
         </Button>
       </Link>
 
@@ -80,7 +91,7 @@ export function PricingCard({
             key={feature}
             className="flex items-start gap-3 text-sm text-foreground-secondary"
           >
-            <Minus size={14} className="shrink-0 mt-1 text-foreground-muted" />
+            <Minus size={14} className="shrink-0 mt-1 text-muted" />
             {feature}
           </li>
         ))}

@@ -3,47 +3,44 @@
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface DialogProps {
   open: boolean;
   onClose: () => void;
-  children: ReactNode;
-  className?: string;
   title?: string;
+  children: ReactNode;
+  size?: "sm" | "md" | "lg";
+  className?: string;
 }
 
-export function Dialog({
-  open,
-  onClose,
-  children,
-  className,
-  title,
-}: DialogProps) {
+const sizeStyles = {
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-lg",
+};
+
+export function Dialog({ open, onClose, title, children, size = "md", className }: DialogProps) {
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (open) window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden
       />
@@ -52,24 +49,28 @@ export function Dialog({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 w-full max-w-md rounded-xl border border-border bg-surface p-6",
-          className
+          "relative z-10 w-full bg-elevated border border-border rounded-xl shadow-2xl p-6 animate-scale-in",
+          sizeStyles[size],
+          className,
         )}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-foreground-secondary hover:text-foreground transition-colors"
+          className="absolute right-4 top-4 text-muted hover:text-foreground transition-colors duration-150"
           aria-label="Close dialog"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
         {title && (
-          <h2 className="text-lg font-heading font-semibold mb-4 pr-8">
+          <h2 className="font-heading text-lg font-semibold text-foreground mb-4 pr-8">
             {title}
           </h2>
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
+
+export default Dialog;

@@ -11,16 +11,37 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div className="h-9 w-9" aria-hidden />;
+    return <div className="h-8 w-8" aria-hidden />;
   }
+
+  const isDark = theme === "dark";
 
   return (
     <button
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground-secondary hover:text-foreground hover:bg-elevated transition-colors"
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-foreground-secondary hover:text-foreground hover:bg-surface transition-all duration-150 active:scale-[0.98]"
+      aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
     >
-      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      <div className="relative h-4 w-4">
+        <Sun
+          size={16}
+          className={`absolute inset-0 transition-all duration-200 ${
+            isDark
+              ? "rotate-0 scale-100 opacity-100"
+              : "rotate-90 scale-0 opacity-0"
+          }`}
+        />
+        <Moon
+          size={16}
+          className={`absolute inset-0 transition-all duration-200 ${
+            isDark
+              ? "-rotate-90 scale-0 opacity-0"
+              : "rotate-0 scale-100 opacity-100"
+          }`}
+        />
+      </div>
     </button>
   );
 }
+
+export default ThemeToggle;

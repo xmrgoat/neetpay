@@ -1,8 +1,12 @@
+import type { PaymentStatus } from "@/lib/constants";
+
 export interface User {
   id: string;
   email: string;
   name: string | null;
   plan: "free" | "pro" | "enterprise";
+  webhookUrl: string | null;
+  webhookSecret: string | null;
   createdAt: Date;
 }
 
@@ -10,19 +14,30 @@ export interface Payment {
   id: string;
   userId: string;
   trackId: string;
-  orderId: string;
   amount: number;
   currency: string;
-  planType: string;
-  status:
-    | "new"
-    | "waiting"
-    | "paying"
-    | "paid"
-    | "expired"
-    | "underpaid"
-    | "refunded";
-  oxapayData: Record<string, unknown> | null;
+  status: PaymentStatus;
+  description: string | null;
+
+  // Chain/crypto details
+  chain: string | null;
+  payCurrency: string | null;
+  payAmount: number | null;
+  payAddress: string | null;
+  network: string | null;
+  tokenContract: string | null;
+
+  // Transaction details
+  txId: string | null;
+  senderAddress: string | null;
+  confirmations: number;
+  requiredConfs: number;
+
+  // Wallet derivation
+  derivationIndex: number | null;
+
+  expiresAt: Date | null;
+  paidAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,72 +46,60 @@ export interface Subscription {
   id: string;
   userId: string;
   plan: string;
-  paymentId: string;
-  startsAt: Date;
-  expiresAt: Date;
-  isActive: boolean;
+  status: string;
+  startDate: Date;
+  endDate: Date | null;
+  paymentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ApiKey {
   id: string;
   userId: string;
-  keyHash: string;
   name: string;
-  permissions: string[];
+  key: string;
+  lastUsed: Date | null;
   createdAt: Date;
 }
 
-// OxaPay API types
-
-export interface OxaPayInvoiceRequest {
-  amount: number;
-  currency: string;
-  lifetime?: number;
-  callback_url: string;
-  return_url: string;
-  order_id: string;
-  email?: string;
-  thanks_message?: string;
-  description?: string;
-}
-
-export interface OxaPayInvoiceResponse {
-  track_id: string;
-  payment_url: string;
-  expired_at: string;
-}
-
-export interface OxaPayWhiteLabelRequest {
-  amount: number;
-  currency: string;
-  pay_currency: string;
-  network: string;
-  lifetime?: number;
-  callback_url: string;
-  order_id: string;
-  email?: string;
-  description?: string;
-}
-
-export interface OxaPayWhiteLabelResponse {
-  track_id: string;
+export interface WalletAddress {
+  id: string;
+  chain: string;
   address: string;
-  pay_amount: number;
-  qr_code: string;
-  rate: number;
-  expired_at: string;
+  derivationIndex: number;
+  paymentId: string | null;
+  createdAt: Date;
 }
 
-export interface OxaPayWebhookPayload {
-  track_id: string;
-  status: string;
+export interface WebhookLog {
+  id: string;
+  userId: string;
+  url: string;
+  payload: string;
+  status: number;
+  success: boolean;
+  duration: number;
+  createdAt: Date;
+}
+
+// Chain provider types
+
+export interface ChainConfig {
+  chain: string;
+  name: string;
+  native: boolean;
+  tokenContract?: string;
+  network: string;
+  requiredConfirmations: number;
+  explorerBaseUrl: string;
+}
+
+export interface PaymentCheck {
+  txHash: string;
   amount: number;
-  currency: string;
-  order_id: string;
-  email?: string;
-  txs?: Array<{
-    tx_hash: string;
-    amount: number;
-    confirmations: number;
-  }>;
+  confirmations: number;
+  from: string;
+  timestamp: number;
+  tokenContract?: string;
 }

@@ -1,51 +1,58 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------
-   Dark mode custom variant for next-themes (class-based)
+   Dark mode custom variant (next-themes, class-based)
    ------------------------------------------------ */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------
-   Semantic color tokens
+   Semantic color tokens — Light
    ------------------------------------------------ */
 :root {
-  --background: #fafafa;
-  --surface: #ffffff;
-  --elevated: #f5f5f5;
-  --border: #e5e5e5;
-  --border-subtle: #f0f0f0;
-  --border-strong: #d4d4d4;
+  --background: #ffffff;
+  --surface: #f9f9f9;
+  --elevated: #ffffff;
+  --border: #e8e8e8;
+  --border-hover: #d4d4d4;
   --foreground: #0a0a0a;
-  --foreground-secondary: #737373;
-  --foreground-muted: #a3a3a3;
+  --foreground-secondary: #525252;
+  --muted: #a3a3a3;
   --primary: #ff6600;
   --primary-hover: #e65c00;
-  --primary-text: #c24e00;
-  --primary-subtle: oklch(0.75 0.18 50 / 0.08);
+  --primary-muted: rgba(255, 102, 0, 0.08);
   --success: #22c55e;
+  --success-muted: rgba(34, 197, 94, 0.1);
   --error: #ef4444;
-  --warning: #f59e0b;
-  --ring: #ff6600;
+  --error-muted: rgba(239, 68, 68, 0.1);
+  --warning: #eab308;
+  --warning-muted: rgba(234, 179, 8, 0.1);
+  --info: #3b82f6;
+  --info-muted: rgba(59, 130, 246, 0.1);
 }
 
+/* ------------------------------------------------
+   Semantic color tokens — Dark
+   ------------------------------------------------ */
 .dark {
-  --background: #0a0a0a;
-  --surface: #141414;
-  --elevated: #1c1c1c;
-  --border: #262626;
-  --border-subtle: #1a1a1a;
-  --border-strong: #404040;
-  --foreground: #f5f5f5;
-  --foreground-secondary: #a3a3a3;
-  --foreground-muted: #525252;
+  --background: #09090b;
+  --surface: #0f0f12;
+  --elevated: #18181b;
+  --border: #232329;
+  --border-hover: #2e2e36;
+  --foreground: #fafafa;
+  --foreground-secondary: #a1a1aa;
+  --muted: #52525b;
   --primary: #ff6600;
   --primary-hover: #ff7a1a;
-  --primary-text: #ff6600;
-  --primary-subtle: oklch(0.65 0.2 50 / 0.1);
+  --primary-muted: rgba(255, 102, 0, 0.1);
   --success: #22c55e;
+  --success-muted: rgba(34, 197, 94, 0.12);
   --error: #ef4444;
-  --warning: #f59e0b;
-  --ring: #ff6600;
+  --error-muted: rgba(239, 68, 68, 0.12);
+  --warning: #eab308;
+  --warning-muted: rgba(234, 179, 8, 0.12);
+  --info: #3b82f6;
+  --info-muted: rgba(59, 130, 246, 0.12);
 }
 
 /* ------------------------------------------------
@@ -66,26 +73,56 @@
 }
 
 /* ------------------------------------------------
-   @theme inline -- maps CSS vars to Tailwind utilities
+   Keyframe animations
+   ------------------------------------------------ */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ------------------------------------------------
+   @theme inline — maps CSS vars to Tailwind utilities
    ------------------------------------------------ */
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-elevated: var(--elevated);
   --color-border: var(--border);
-  --color-border-subtle: var(--border-subtle);
-  --color-border-strong: var(--border-strong);
+  --color-border-hover: var(--border-hover);
   --color-foreground: var(--foreground);
   --color-foreground-secondary: var(--foreground-secondary);
-  --color-foreground-muted: var(--foreground-muted);
+  --color-muted: var(--muted);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
-  --color-primary-text: var(--primary-text);
-  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-muted: var(--primary-muted);
   --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
   --color-error: var(--error);
+  --color-error-muted: var(--error-muted);
   --color-warning: var(--warning);
-  --color-ring: var(--ring);
+  --color-warning-muted: var(--warning-muted);
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
 
   --color-orange-50: var(--orange-50);
   --color-orange-100: var(--orange-100);
@@ -102,57 +139,89 @@
   --font-heading: var(--font-space-grotesk);
   --font-body: var(--font-geist-sans);
   --font-mono: var(--font-jetbrains-mono);
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-slide-down: slide-down 0.4s ease-out;
+  --animate-scale-in: scale-in 0.2s ease-out;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-pulse-subtle: pulse-subtle 2s ease-in-out infinite;
 }
 
 /* ------------------------------------------------
    Base styles
    ------------------------------------------------ */
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space-grotesk), system-ui, sans-serif;
+    letter-spacing: -0.025em;
+  }
+
+  code, pre, kbd {
+    font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  }
+
+  ::selection {
+    background-color: var(--primary-muted);
+    color: var(--primary);
+  }
 }
 
-/* Headline typography */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
-  letter-spacing: -0.03em;
+/* ------------------------------------------------
+   Utilities
+   ------------------------------------------------ */
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .safe-area-pb {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
 }
 
-/* Monospace elements */
-code, pre, kbd, .font-mono {
-  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
-}
-
-/* Selection */
-::selection {
-  background-color: oklch(0.65 0.2 50 / 0.3);
-  color: var(--foreground);
-}
-
-/* Focus visible */
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-/* Scrollbar */
+/* ------------------------------------------------
+   Scrollbar
+   ------------------------------------------------ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground-muted);
+  background: var(--muted);
+}
+
+/* ------------------------------------------------
+   Focus visible
+   ------------------------------------------------ */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }

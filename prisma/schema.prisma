@@ -13,46 +13,84 @@ model User {
   email          String         @unique
   hashedPassword String
   plan           String         @default("free")
+  webhookUrl     String?
+  webhookSecret  String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  payments      Payment[]
-  subscriptions Subscription[]
-  apiKeys       ApiKey[]
+  payments           Payment[]
+  subscriptions      Subscription[]
+  apiKeys            ApiKey[]
+  webhookLogs        WebhookLog[]
+  walletBalances     WalletBalance[]
+  walletTransactions WalletTransaction[]
+  analyticsEvents    AnalyticsEvent[]
 }
 
 model Payment {
-  id          String   @id @default(cuid())
-  userId      String
-  trackId     String   @unique
-  amount      Float
-  currency    String
-  status      String   @default("new")
-  description String?
-  payAddress  String?
-  payCurrency String?
-  payAmount   Float?
-  network     String?
-  txId        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String    @id @default(cuid())
+  userId          String
+  trackId         String    @unique
+  amount          Float
+  currency        String
+  status          String    @default("pending")
+  description     String?
+
+  // Chain/crypto details
+  chain           String?
+  payCurrency     String?
+  payAmount       Float?
+  payAddress      String?
+  network         String?
+  tokenContract   String?
+
+  // Transaction details
+  txId            String?
+  senderAddress   String?
+  confirmations   Int       @default(0)
+  requiredConfs   Int       @default(1)
+
+  // Wallet derivation
+  derivationIndex Int?
+
+  // Geo / analytics
+  country         String?
+  ipAddress       String?
+
+  expiresAt       DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
+  @@index([payAddress])
+  @@index([chain, status])
+}
+
+model WalletAddress {
+  id              String   @id @default(cuid())
+  chain           String
+  address         String   @unique
+  derivationIndex Int
+  paymentId       String?  @unique
+  createdAt       DateTime @default(now())
+
+  @@index([chain, paymentId])
 }
 
 model Subscription {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   plan      String
-  status    String   @default("active")
-  startDate DateTime @default(now())
+  status    String    @default("active")
+  startDate DateTime  @default(now())
   endDate   DateTime?
   paymentId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -60,14 +98,92 @@ model Subscription {
 }
 
 model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String    @default("Default")
+  key       String    @unique
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WebhookLog {
   id        String   @id @default(cuid())
   userId    String
-  name      String   @default("Default")
-  key       String   @unique
-  lastUsed  DateTime?
+  url       String
+  payload   String
+  status    Int
+  success   Boolean
+  duration  Int
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model WalletBalance {
+  id        String   @id @default(cuid())
+  userId    String
+  currency  String
+  chain     String
+  amount    Float    @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, currency, chain])
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "deposit" | "withdrawal" | "payment_received"
+  currency    String
+  chain       String
+  amount      Float
+  fee         Float?
+  txHash      String?
+  toAddress   String?
+  fromAddress String?
+  status      String   @default("pending")
+  paymentId   String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, type])
+  @@index([paymentId])
+}
+
+model PriceCache {
+  id        String   @id @default(cuid())
+  symbol    String   @unique
+  usdPrice  Float
+  change24h Float?
+  updatedAt DateTime @updatedAt
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "payment_view" | "payment_created" | "payment_paid" | "link_click"
+  paymentId String?
+  country   String?
+  city      String?
+  ip        String?
+  userAgent String?
+  referrer  String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([createdAt])
 }
