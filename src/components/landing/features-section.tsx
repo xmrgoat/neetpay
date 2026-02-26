@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { Shield, Zap, Code2, Globe, Terminal } from "lucide-react";
+import { CrystalScene } from "./crystal-scene";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -135,6 +136,23 @@ export function FeaturesSection() {
         { opacity: 0, duration: 0.4 }, 0.6
       );
 
+      // Crystal — scrub fade in/out
+      const crystalTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: "[data-crystal-3d]",
+          start: "top 95%",
+          end: "top -20%",
+          scrub: 2,
+        },
+      });
+      crystalTl.fromTo("[data-crystal-3d]",
+        { opacity: 0, scale: 0.85, y: 50 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5 }
+      );
+      crystalTl.to("[data-crystal-3d]",
+        { opacity: 0, duration: 0.4 }, 0.6
+      );
+
       // Cards — scrub fade in/out
       const cards = sectionRef.current.querySelectorAll("[data-bento-card]");
       cards.forEach((card) => {
@@ -161,6 +179,14 @@ export function FeaturesSection() {
   return (
     <section id="products" ref={sectionRef} className="py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6">
+        {/* 3D Crystal logo */}
+        <div
+          data-crystal-3d
+          className="relative mx-auto mb-12 h-[280px] w-[280px] sm:h-[360px] sm:w-[360px]"
+        >
+          <CrystalScene className="h-full w-full" />
+        </div>
+
         {/* Section heading */}
         <div data-features-heading className="mb-16">
           <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">

@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   },
   description:
     "Crypto payment gateway. Accept XMR, BTC, ETH, USDT and more. No KYC. No custody. No permission needed.",
+  icons: {
+    icon: "/image/logo1.png",
+    apple: "/image/logo1.png",
+  },
   keywords: [
     "crypto payments",
     "monero",

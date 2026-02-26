@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------
-   Dark mode custom variant (next-themes, class-based)
+   Dark mode custom variant (next-themes, data-theme)
    ------------------------------------------------ */
-@custom-variant dark (&:where(.dark, .dark *, .midnight, .midnight *, .ember, .ember *, .ocean, .ocean *, .emerald, .emerald *, .rose, .rose *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, [data-theme="midnight"], [data-theme="midnight"] *, [data-theme="ember"], [data-theme="ember"] *, [data-theme="ocean"], [data-theme="ocean"] *, [data-theme="emerald"], [data-theme="emerald"] *, [data-theme="rose"], [data-theme="rose"] *));
 
 /* ------------------------------------------------
    Semantic color tokens — Light
@@ -33,7 +33,7 @@
 /* ------------------------------------------------
    Semantic color tokens — Dark
    ------------------------------------------------ */
-.dark {
+[data-theme="dark"] {
   --background: #0c0c0f;
   --surface: #121216;
   --elevated: #1a1a1f;
@@ -58,7 +58,7 @@
 /* ------------------------------------------------
    Semantic color tokens — Midnight (deep navy blue)
    ------------------------------------------------ */
-.midnight {
+[data-theme="midnight"] {
   --background: #0b0e1a;
   --surface: #101525;
   --elevated: #171d33;
@@ -83,7 +83,7 @@
 /* ------------------------------------------------
    Semantic color tokens — Ember (warm charcoal)
    ------------------------------------------------ */
-.ember {
+[data-theme="ember"] {
   --background: #110a06;
   --surface: #1a0f08;
   --elevated: #231710;
@@ -108,7 +108,7 @@
 /* ------------------------------------------------
    Semantic color tokens — Ocean (deep teal)
    ------------------------------------------------ */
-.ocean {
+[data-theme="ocean"] {
   --background: #06100f;
   --surface: #0a1918;
   --elevated: #102221;
@@ -133,7 +133,7 @@
 /* ------------------------------------------------
    Semantic color tokens — Emerald (deep green)
    ------------------------------------------------ */
-.emerald {
+[data-theme="emerald"] {
   --background: #060f0b;
   --surface: #0a1912;
   --elevated: #10231a;
@@ -158,7 +158,7 @@
 /* ------------------------------------------------
    Semantic color tokens — Rose (dark rose/burgundy)
    ------------------------------------------------ */
-.rose {
+[data-theme="rose"] {
   --background: #100609;
   --surface: #190a10;
   --elevated: #231017;
