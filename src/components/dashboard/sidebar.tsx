@@ -21,6 +21,7 @@ import {
   X,
   BadgeCheck,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -191,6 +192,27 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div className="mt-auto shrink-0 border-t border-border p-3">
+        {/* Security */}
+        <Link
+          href="/dashboard/security"
+          className={cn(
+            "relative flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
+            collapsed ? "justify-center" : "px-3 gap-3",
+            isActive("/dashboard/security") && "bg-primary-muted text-primary font-medium",
+          )}
+        >
+          {isActive("/dashboard/security") && (
+            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
+          )}
+          <ShieldCheck className="h-[18px] w-[18px] shrink-0" />
+          <span className={cn(
+            "truncate text-sm transition-[opacity,width] duration-200",
+            collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
+          )}>
+            Security
+          </span>
+        </Link>
+
         {/* Settings */}
         <Link
           href="/dashboard/settings"
@@ -384,6 +406,22 @@ export function Sidebar() {
         </nav>
 
         <div className="mt-auto shrink-0 border-t border-border p-3">
+          <Link
+            href="/dashboard/security"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
+              isActive("/dashboard/security")
+                ? "bg-primary-muted text-primary font-medium"
+                : "text-foreground-secondary hover:text-foreground hover:bg-surface",
+            )}
+          >
+            {isActive("/dashboard/security") && (
+              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
+            )}
+            <ShieldCheck className="h-[18px] w-[18px] shrink-0" />
+            <span className="truncate">Security</span>
+          </Link>
           <Link
             href="/dashboard/settings"
             onClick={() => setMobileOpen(false)}
