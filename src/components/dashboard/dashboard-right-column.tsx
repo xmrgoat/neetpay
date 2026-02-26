@@ -5,6 +5,8 @@ import gsap from "gsap";
 import { WalletCard } from "./wallet-card";
 import { CryptoAssets } from "./crypto-assets";
 import { SwapInterface } from "./swap-interface";
+import { SendInterface } from "./send-interface";
+import { ReceiveInterface } from "./receive-interface";
 
 interface Holding {
   currency: string;
@@ -20,43 +22,85 @@ interface Props {
   holdings: Holding[];
 }
 
-export function DashboardRightColumn({ totalUsd, change24h, holdings }: Props) {
-  const [swapOpen, setSwapOpen] = useState(false);
-  const swapRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+type PanelType = "send" | "receive" | "swap";
 
-  const openSwap = useCallback(() => {
-    setSwapOpen(true);
+export function DashboardRightColumn({ totalUsd, change24h, holdings }: Props) {
+  const [activePanel, setActivePanel] = useState<PanelType | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const isAnimating = useRef(false);
+
+  const openPanel = useCallback((panel: PanelType) => {
+    isAnimating.current = true;
+    setActivePanel(panel);
     requestAnimationFrame(() => {
-      if (swapRef.current && contentRef.current) {
-        // Slide swap panel in from right
-        gsap.fromTo(swapRef.current,
+      if (panelRef.current && contentRef.current) {
+        gsap.fromTo(panelRef.current,
           { x: "100%", opacity: 0 },
-          { x: "0%", opacity: 1, duration: 0.4, ease: "power3.out" }
+          { x: "0%", opacity: 1, duration: 0.4, ease: "power3.out", onComplete: () => { isAnimating.current = false; gsap.set(panelRef.current, { clearProps: "transform,opacity" }); } }
         );
-        // Push content out to the left
         gsap.to(contentRef.current,
           { x: "-20%", opacity: 0, duration: 0.35, ease: "power3.out" }
         );
+      } else {
+        isAnimating.current = false;
       }
     });
   }, []);
 
-  const closeSwap = useCallback(() => {
-    if (swapRef.current && contentRef.current) {
-      // Slide swap panel out to the right
-      gsap.to(swapRef.current, {
+  const closePanel = useCallback(() => {
+    if (isAnimating.current) return;
+    isAnimating.current = true;
+    if (panelRef.current && contentRef.current) {
+      gsap.to(panelRef.current, {
         x: "100%", opacity: 0, duration: 0.35, ease: "power3.in",
       });
-      // Bring content back in
       gsap.to(contentRef.current, {
         x: "0%", opacity: 1, duration: 0.4, ease: "power3.out", delay: 0.1,
-        onComplete: () => setSwapOpen(false),
+        onComplete: () => { setActivePanel(null); isAnimating.current = false; },
       });
     } else {
-      setSwapOpen(false);
+      setActivePanel(null);
+      isAnimating.current = false;
     }
   }, []);
+
+  const switchPanel = useCallback((panel: PanelType) => {
+    if (isAnimating.current) return;
+
+    // Clicking the same active tab → close
+    if (activePanel === panel) {
+      closePanel();
+      return;
+    }
+
+    // Already open → cross-fade
+    if (activePanel) {
+      isAnimating.current = true;
+      if (panelRef.current) {
+        gsap.to(panelRef.current, {
+          opacity: 0, duration: 0.15, ease: "power2.in",
+          onComplete: () => {
+            setActivePanel(panel);
+            requestAnimationFrame(() => {
+              if (panelRef.current) {
+                gsap.fromTo(panelRef.current,
+                  { opacity: 0 },
+                  { opacity: 1, duration: 0.2, ease: "power2.out", onComplete: () => { isAnimating.current = false; gsap.set(panelRef.current, { clearProps: "transform,opacity" }); } }
+                );
+              } else {
+                isAnimating.current = false;
+              }
+            });
+          },
+        });
+      }
+      return;
+    }
+
+    // Nothing open → slide in
+    openPanel(panel);
+  }, [activePanel, openPanel, closePanel]);
 
   return (
     <div className="relative min-h-0 overflow-y-auto overflow-x-hidden lg:col-span-3 pb-4 no-scrollbar">
@@ -68,7 +112,9 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings }: Props) {
             totalUsd={totalUsd}
             change24h={change24h}
             holdings={holdings}
-            onSwapClick={openSwap}
+            onSendClick={() => switchPanel("send")}
+            onReceiveClick={() => switchPanel("receive")}
+            onSwapClick={() => switchPanel("swap")}
           />
           {/* Fade mask */}
           <div className="pointer-events-none absolute -bottom-4 left-0 right-0 h-6 bg-gradient-to-b from-surface to-transparent" />
@@ -79,13 +125,21 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings }: Props) {
         </div>
       </div>
 
-      {/* ── Swap panel overlay — slides from right ── */}
-      {swapOpen && (
+      {/* ── Panel overlay — slides from right ── */}
+      {activePanel && (
         <div
-          ref={swapRef}
+          ref={panelRef}
           className="absolute inset-0 z-30 overflow-y-auto no-scrollbar bg-background"
         >
-          <SwapInterface holdings={holdings} onBack={closeSwap} />
+          {activePanel === "swap" && (
+            <SwapInterface holdings={holdings} onBack={closePanel} activePanel={activePanel} onSwitchPanel={switchPanel} />
+          )}
+          {activePanel === "send" && (
+            <SendInterface holdings={holdings} onBack={closePanel} activePanel={activePanel} onSwitchPanel={switchPanel} />
+          )}
+          {activePanel === "receive" && (
+            <ReceiveInterface holdings={holdings} onBack={closePanel} activePanel={activePanel} onSwitchPanel={switchPanel} />
+          )}
         </div>
       )}
     </div>
