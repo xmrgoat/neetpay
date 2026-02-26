@@ -4,7 +4,6 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 
 const registerSchema = z.object({
-  name: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(6).max(100),
 });
@@ -36,7 +35,6 @@ export async function POST(req: Request) {
 
     const user = await db.user.create({
       data: {
-        name: parsed.data.name,
         email: parsed.data.email,
         hashedPassword,
       },
