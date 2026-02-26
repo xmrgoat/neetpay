@@ -2,6 +2,8 @@ import Image from "next/image";
 import { Navbar } from "@/components/landing/navbar";
 import { TerminalHero } from "@/components/landing/terminal-hero";
 import { SocialProofBar } from "@/components/landing/social-proof-bar";
+import { CryptoUniverse } from "@/components/landing/crypto-universe";
+import { PrivacySection } from "@/components/landing/privacy-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { StatsSection } from "@/components/landing/stats-section";
@@ -32,7 +34,9 @@ export default function HomePage() {
         <Navbar />
         <main className="pb-16 md:pb-0">
           <TerminalHero />
-          <SocialProofBar />
+          {/* <SocialProofBar /> */}
+          <CryptoUniverse />
+          <PrivacySection />
           <FeaturesSection />
           <HowItWorks />
           <DeveloperSection />

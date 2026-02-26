@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, useState, useEffect, Suspense } from "react";
+import { useRef, useState, useEffect, Suspense, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Environment,
-  MeshTransmissionMaterial,
   Float,
   useGLTF,
 } from "@react-three/drei";
@@ -15,85 +14,23 @@ import {
 import * as THREE from "three";
 
 /* ──────────────────────────────────────────────────────────────
-   Crystal — loads the GLB model and applies glass material
+   Interactive Crystal — mouse follow + drag to rotate
    ────────────────────────────────────────────────────────────── */
 
-function Crystal() {
+function CrystalModel() {
   const groupRef = useRef<THREE.Group>(null);
   const { scene } = useGLTF("/image/logo3d.glb");
-  const { viewport } = useThree();
 
-  // Angular velocity for mouse-driven rotation
+  // Rotation state — angularVel is extra velocity from drag / spring
   const angularVel = useRef({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const lastPointer = useRef({ x: 0, y: 0 });
 
-  // Center and scale the model on first load
-  const model = useRef<THREE.Group | null>(null);
-  if (!model.current) {
-    model.current = scene.clone();
-    // Compute bounding box to center + normalize scale
-    const box = new THREE.Box3().setFromObject(model.current);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const scaleFactor = 2.5 / maxDim;
-    model.current.scale.setScalar(scaleFactor);
-    model.current.position.sub(center.multiplyScalar(scaleFactor));
-  }
-
-  useFrame((state, delta) => {
-    if (!groupRef.current) return;
-    const t = state.clock.elapsedTime;
-
-    // Slow auto-rotation
-    angularVel.current.y += 0.02 * delta;
-
-    // Subtle mouse influence
-    const mx = state.pointer.x;
-    const my = state.pointer.y;
-    angularVel.current.x += my * 0.001 * delta;
-    angularVel.current.y += mx * 0.001 * delta;
-
-    // Strong friction — slow & smooth
-    const friction = Math.pow(0.4, delta);
-    angularVel.current.x *= friction;
-    angularVel.current.y *= friction;
-
-    // Apply rotation
-    groupRef.current.rotation.x += angularVel.current.x;
-    groupRef.current.rotation.y += angularVel.current.y;
-
-    // Gentle float
-    groupRef.current.position.y = Math.sin(t * 0.3) * 0.05;
-  });
-
-  // Apply glass material to all meshes in the model
-  return (
-    <group ref={groupRef}>
-      <group>
-        {model.current && (
-          <primitive object={model.current}>
-            {/* Override materials on all child meshes */}
-          </primitive>
-        )}
-      </group>
-    </group>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Glass material applier — traverses the model and swaps
-   materials for glass transmission
-   ────────────────────────────────────────────────────────────── */
-
-function CrystalWithGlass() {
-  const groupRef = useRef<THREE.Group>(null);
-  const { scene } = useGLTF("/image/logo3d.glb");
-  const { viewport } = useThree();
-
-  const angularVel = useRef({ x: 0, y: 0 });
-  const clonedScene = useRef<THREE.Group | null>(null);
+  // Continuous Y spin speed (right-to-left)
+  const SPIN_SPEED = 0.35;
 
   // Clone + center + scale once
+  const clonedScene = useRef<THREE.Group | null>(null);
   if (!clonedScene.current) {
     clonedScene.current = scene.clone();
     const box = new THREE.Box3().setFromObject(clonedScene.current);
@@ -102,34 +39,82 @@ function CrystalWithGlass() {
     const maxDim = Math.max(size.x, size.y, size.z);
     const s = 2.5 / maxDim;
     clonedScene.current.scale.setScalar(s);
-    clonedScene.current.position.set(
-      -center.x * s,
-      -center.y * s,
-      -center.z * s
-    );
+    clonedScene.current.position.set(-center.x * s, -center.y * s, -center.z * s);
   }
+
+  // Listen for pointer events on the canvas
+  const { gl } = useThree();
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onPointerDown = (e: PointerEvent) => {
+      isDragging.current = true;
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      canvas.style.cursor = "grabbing";
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isDragging.current) return;
+      const dx = e.clientX - lastPointer.current.x;
+      const dy = e.clientY - lastPointer.current.y;
+      // Add velocity from drag — high multiplier for aggressive spin
+      angularVel.current.y += dx * 0.04;
+      angularVel.current.x += dy * 0.04;
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const onPointerUp = () => {
+      isDragging.current = false;
+      canvas.style.cursor = "grab";
+    };
+
+    canvas.style.cursor = "grab";
+    canvas.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [gl]);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
 
-    // Slow auto-rotation
-    angularVel.current.y += 0.015 * delta;
+    // Always apply continuous Y spin (right-to-left)
+    groupRef.current.rotation.y += SPIN_SPEED * delta;
 
-    // Subtle mouse influence
-    angularVel.current.x += state.pointer.y * 0.0008 * delta;
-    angularVel.current.y += state.pointer.x * 0.0008 * delta;
+    if (!isDragging.current) {
+      // Spring X back to 0 (face forward) — tilt recovery
+      const springX = 3.0;
+      angularVel.current.x -= groupRef.current.rotation.x * springX * delta;
 
-    // Strong friction
-    const friction = Math.pow(0.35, delta);
+      // Dampen extra Y velocity back toward 0 (resume steady spin)
+      angularVel.current.y *= Math.pow(0.92, delta * 60);
+
+      // Mouse subtly tilts the model
+      const mouseOffsetX = state.pointer.y * 0.12;
+      angularVel.current.x += (mouseOffsetX - angularVel.current.x) * 0.03;
+
+      // Dampen X velocity
+      angularVel.current.x *= (1 - 0.05);
+    }
+
+    // Friction on drag momentum
+    const friction = isDragging.current ? 0.98 : Math.pow(0.94, delta * 60);
     angularVel.current.x *= friction;
     angularVel.current.y *= friction;
 
-    groupRef.current.rotation.x += angularVel.current.x;
-    groupRef.current.rotation.y += angularVel.current.y;
+    // Apply extra velocity from drag on top of the continuous spin
+    groupRef.current.rotation.x += angularVel.current.x * delta * 2;
+    groupRef.current.rotation.y += angularVel.current.y * delta * 2;
 
     // Gentle float
-    groupRef.current.position.y = Math.sin(t * 0.3) * 0.04;
+    groupRef.current.position.y = Math.sin(t * 0.4) * 0.06;
   });
 
   return (
@@ -163,7 +148,7 @@ function Scene() {
         floatIntensity={0.2}
         floatingRange={[-0.03, 0.03]}
       >
-        <CrystalWithGlass />
+        <CrystalModel />
       </Float>
 
       <Environment preset="city" environmentIntensity={0.6} />
