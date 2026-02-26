@@ -38,33 +38,44 @@ export function SecuritySection() {
     () => {
       if (!sectionRef.current) return;
 
-      gsap.from("[data-sec-left]", {
-        x: -30,
-        opacity: 0,
-        duration: 0.8,
-        ease: "power3.out",
+      // Left text — scrub fade in/out
+      const leftTl = gsap.timeline({
         scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top 75%",
-          toggleActions: "play none none none",
+          trigger: "[data-sec-left]",
+          start: "top 90%",
+          end: "top -10%",
+          scrub: 2,
         },
       });
+      leftTl.fromTo("[data-sec-left]",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.4 }
+      );
+      leftTl.to("[data-sec-left]",
+        { opacity: 0, duration: 0.4 }, 0.6
+      );
 
+      // Cards — scrub fade in/out
       const items = sectionRef.current.querySelectorAll("[data-sec-item]");
-      gsap.from(items, {
-        y: 30,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.08,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: items[0],
-          start: "top 85%",
-          toggleActions: "play none none none",
-        },
+      items.forEach((item) => {
+        const itemTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: item,
+            start: "top 90%",
+            end: "top -10%",
+            scrub: 2,
+          },
+        });
+        itemTl.fromTo(item,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.4 }
+        );
+        itemTl.to(item,
+          { opacity: 0, duration: 0.4 }, 0.6
+        );
       });
     },
-    { scope: sectionRef }
+    { scope: sectionRef, revertOnUpdate: true }
   );
 
   return (

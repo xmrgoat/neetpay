@@ -36,31 +36,25 @@ export function DeveloperSection() {
     () => {
       if (!sectionRef.current) return;
 
-      gsap.from("[data-dev-text]", {
-        x: -30,
-        opacity: 0,
-        duration: 0.7,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top 75%",
-          toggleActions: "play none none none",
-        },
-      });
-
-      gsap.from("[data-dev-code]", {
-        y: 40,
-        opacity: 0,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: "[data-dev-code]",
-          start: "top 85%",
-          toggleActions: "play none none none",
-        },
+      ["[data-dev-text]", "[data-dev-code]"].forEach((sel) => {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: sel,
+            start: "top 90%",
+            end: "top -10%",
+            scrub: 2,
+          },
+        });
+        tl.fromTo(sel,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.4 }
+        );
+        tl.to(sel,
+          { opacity: 0, duration: 0.4 }, 0.6
+        );
       });
     },
-    { scope: sectionRef }
+    { scope: sectionRef, revertOnUpdate: true }
   );
 
   return (

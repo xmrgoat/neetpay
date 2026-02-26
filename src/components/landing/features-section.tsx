@@ -118,33 +118,44 @@ export function FeaturesSection() {
     () => {
       if (!sectionRef.current) return;
 
-      gsap.from("[data-features-heading]", {
-        y: 30,
-        opacity: 0,
-        duration: 0.7,
-        ease: "power3.out",
+      // Heading — scrub fade in/out
+      const headTl = gsap.timeline({
         scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top 80%",
-          toggleActions: "play none none none",
+          trigger: "[data-features-heading]",
+          start: "top 90%",
+          end: "top -10%",
+          scrub: 2,
         },
       });
+      headTl.fromTo("[data-features-heading]",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.4 }
+      );
+      headTl.to("[data-features-heading]",
+        { opacity: 0, duration: 0.4 }, 0.6
+      );
 
+      // Cards — scrub fade in/out
       const cards = sectionRef.current.querySelectorAll("[data-bento-card]");
-      gsap.from(cards, {
-        y: 40,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.08,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: cards[0],
-          start: "top 85%",
-          toggleActions: "play none none none",
-        },
+      cards.forEach((card) => {
+        const cardTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: card,
+            start: "top 90%",
+            end: "top -10%",
+            scrub: 2,
+          },
+        });
+        cardTl.fromTo(card,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.4 }
+        );
+        cardTl.to(card,
+          { opacity: 0, duration: 0.4 }, 0.6
+        );
       });
     },
-    { scope: sectionRef }
+    { scope: sectionRef, revertOnUpdate: true }
   );
 
   return (

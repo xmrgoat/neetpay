@@ -40,20 +40,24 @@ export function HowItWorks() {
 
       const steps = sectionRef.current.querySelectorAll("[data-step]");
       steps.forEach((step) => {
-        gsap.from(step, {
-          y: 40,
-          opacity: 0,
-          duration: 0.8,
-          ease: "power3.out",
+        const stepTl = gsap.timeline({
           scrollTrigger: {
             trigger: step,
-            start: "top 80%",
-            toggleActions: "play none none none",
+            start: "top 90%",
+            end: "top -10%",
+            scrub: 2,
           },
         });
+        stepTl.fromTo(step,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.4 }
+        );
+        stepTl.to(step,
+          { opacity: 0, duration: 0.4 }, 0.6
+        );
       });
     },
-    { scope: sectionRef }
+    { scope: sectionRef, revertOnUpdate: true }
   );
 
   return (
