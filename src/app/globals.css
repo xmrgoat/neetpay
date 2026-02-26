@@ -160,8 +160,8 @@
   --color-orange-900: var(--orange-900);
   --color-orange-950: var(--orange-950);
 
-  --font-heading: var(--font-space-grotesk);
-  --font-body: var(--font-geist-sans);
+  --font-heading: "SF Pro Display", var(--font-inter), "Helvetica Neue", sans-serif;
+  --font-body: "SF Pro Text", var(--font-inter), Helvetica, sans-serif;
   --font-mono: var(--font-jetbrains-mono);
 
   --animate-fade-in: fade-in 0.3s ease-out;
@@ -188,13 +188,13 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+    font-family: "SF Pro Text", var(--font-inter), Helvetica, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-space-grotesk), system-ui, sans-serif;
+    font-family: "SF Pro Display", var(--font-inter), "Helvetica Neue", sans-serif;
     letter-spacing: -0.025em;
   }
 
@@ -245,6 +245,34 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
+}
+
+/* ------------------------------------------------
+   Custom scroll — ultra-thin, appears on hover
+   ------------------------------------------------ */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+.custom-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.custom-scroll:hover {
+  scrollbar-color: var(--border) transparent;
 }
 
 /* ------------------------------------------------

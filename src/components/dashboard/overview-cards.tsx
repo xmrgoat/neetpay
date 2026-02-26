@@ -40,8 +40,8 @@ const cards = [
     icon: DollarSign,
     format: (v: number) => formatCurrency(v),
     changeKey: "revenueChange" as const,
-    iconBg: "bg-primary-muted",
-    iconColor: "text-primary",
+    color: "text-primary",
+    bg: "bg-primary-muted",
   },
   {
     key: "monthRevenue",
@@ -49,8 +49,8 @@ const cards = [
     icon: TrendingUp,
     format: (v: number) => formatCurrency(v),
     changeKey: "revenueChange" as const,
-    iconBg: "bg-success-muted",
-    iconColor: "text-success",
+    color: "text-success",
+    bg: "bg-success-muted",
   },
   {
     key: "paymentCount",
@@ -58,8 +58,8 @@ const cards = [
     icon: ArrowLeftRight,
     format: (v: number) => v.toLocaleString("en-US").padStart(2, "0"),
     changeKey: "paymentChange" as const,
-    iconBg: "bg-info-muted",
-    iconColor: "text-info",
+    color: "text-info",
+    bg: "bg-info-muted",
   },
   {
     key: "conversionRate",
@@ -67,8 +67,8 @@ const cards = [
     icon: Percent,
     format: (v: number) => `${v.toFixed(1)}%`,
     changeKey: null,
-    iconBg: "bg-warning-muted",
-    iconColor: "text-warning",
+    color: "text-warning",
+    bg: "bg-warning-muted",
   },
 ] as const;
 
@@ -77,13 +77,12 @@ export function OverviewCards({ stats }: OverviewCardsProps) {
 
   useGSAP(
     () => {
-      gsap.from(containerRef.current?.children ?? [], {
-        opacity: 0,
-        y: 16,
-        duration: 0.5,
-        stagger: 0.08,
-        ease: "power2.out",
-      });
+      if (!containerRef.current) return;
+      gsap.fromTo(
+        containerRef.current.children,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.5, stagger: 0.08, ease: "power2.out" }
+      );
     },
     { scope: containerRef }
   );
@@ -100,39 +99,38 @@ export function OverviewCards({ stats }: OverviewCardsProps) {
         return (
           <div
             key={card.key}
-            className="flex items-start gap-4 rounded-xl border border-border bg-background p-5"
+            className="group relative overflow-hidden rounded-xl border border-border bg-background p-5 transition-colors hover:border-border-hover"
           >
-            {/* Icon */}
-            <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", card.iconBg)}>
-              <card.icon className={cn("h-[18px] w-[18px]", card.iconColor)} />
-            </div>
-
-            {/* Content */}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted uppercase tracking-wider">
                 {card.label}
               </p>
-              <p className="mt-1 font-heading text-xl font-semibold tabular-nums text-foreground">
-                {card.format(value)}
-              </p>
-              {change !== null && change !== 0 && (
-                <p
-                  className={cn(
-                    "mt-1 flex items-center gap-1 text-[11px] font-medium",
-                    change > 0 ? "text-success" : "text-error"
-                  )}
-                >
-                  {change > 0 ? (
-                    <ArrowUpRight size={12} strokeWidth={2.5} />
-                  ) : (
-                    <ArrowDownRight size={12} strokeWidth={2.5} />
-                  )}
-                  {change > 0 ? "+" : ""}
-                  {change}%
-                  <span className="font-normal text-muted">vs last month</span>
-                </p>
-              )}
+              <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", card.bg)}>
+                <card.icon className={cn("h-4 w-4", card.color)} />
+              </div>
             </div>
+
+            <p className="mt-3 font-heading text-2xl font-bold tabular-nums text-foreground">
+              {card.format(value)}
+            </p>
+
+            {change !== null && (
+              <p
+                className={cn(
+                  "mt-2 flex items-center gap-1 text-xs font-medium",
+                  change > 0 ? "text-success" : change < 0 ? "text-error" : "text-muted"
+                )}
+              >
+                {change > 0 ? (
+                  <ArrowUpRight size={14} strokeWidth={2.5} />
+                ) : change < 0 ? (
+                  <ArrowDownRight size={14} strokeWidth={2.5} />
+                ) : null}
+                {change > 0 ? "+" : ""}
+                {change}%
+                <span className="font-normal text-muted">vs last month</span>
+              </p>
+            )}
           </div>
         );
       })}

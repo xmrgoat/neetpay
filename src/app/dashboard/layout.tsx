@@ -15,9 +15,9 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-dvh bg-surface">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm lg:px-8">
+        <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm lg:px-6">
           <div>
             <p className="text-sm font-medium text-foreground">
               Welcome back{session.user.name ? `, ${session.user.name}` : ""}
@@ -32,8 +32,8 @@ export default async function DashboardLayout({
           </div>
         </header>
 
-        {/* Page content */}
-        <div className="mx-auto max-w-[1400px] px-6 py-6 lg:px-8">
+        {/* Page content — fills remaining height, children handle their own scroll */}
+        <div className="min-h-0 flex-1 overflow-hidden px-4 py-5 lg:px-6">
           {children}
         </div>
       </main>
