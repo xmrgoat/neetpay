@@ -64,7 +64,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto no-scrollbar space-y-6 pb-4">
       <div>
         <h1 className="font-heading text-lg font-semibold text-foreground">
           Settings

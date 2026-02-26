@@ -6,7 +6,7 @@ import gsap from "gsap";
 import {
   Shield, ShieldCheck, ShieldOff,
   Copy, Check, X,
-  Smartphone, KeyRound, Lock, Trash2,
+  KeyRound, Lock, Trash2,
   Eye, EyeOff,
   Monitor, Globe, Clock,
   ArrowUpRight, Settings, LogIn, Key, UserPlus, CreditCard,
@@ -48,13 +48,13 @@ function FakeQR({ size = 160 }: { size?: number }) {
   );
 }
 
-// ─── Modal shell ────────────────────────────────────────────────────────────
+// ─── Modal ──────────────────────────────────────────────────────────────────
 
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative w-full max-w-sm rounded-2xl border border-border bg-background shadow-2xl">
+      <div className="relative w-full max-w-[400px] rounded-2xl border border-border bg-background shadow-2xl">
         {children}
       </div>
     </div>
@@ -68,6 +68,17 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
       <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors">
         <X className="h-4 w-4" />
       </button>
+    </div>
+  );
+}
+
+// ─── Section header helper ──────────────────────────────────────────────────
+
+function SectionHeader({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-3">
+      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">{title}</h2>
+      <p className="text-[10px] text-muted/70 mt-0.5">{description}</p>
     </div>
   );
 }
@@ -112,19 +123,16 @@ interface Props {
 export function SecurityContent({ userName, userEmail }: Props) {
   const pageRef = useRef<HTMLDivElement>(null);
 
-  // State
   const [twoFaEnabled, setTwoFaEnabled] = useState(true);
   const [withdrawalPwEnabled, setWithdrawalPwEnabled] = useState(false);
   const [sessions, setSessions] = useState(fakeSessions);
 
-  // Modals
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [show2faSetup, setShow2faSetup] = useState(false);
   const [show2faDisable, setShow2faDisable] = useState(false);
   const [showWithdrawalPw, setShowWithdrawalPw] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
-  // Form state
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
   const [code2fa, setCode2fa] = useState("");
@@ -156,270 +164,304 @@ export function SecurityContent({ userName, userEmail }: Props) {
 
   return (
     <>
-      <div ref={pageRef} className="space-y-5">
+      <div ref={pageRef} className="space-y-8">
 
-        {/* ── Password ───────────────────────────────────────── */}
-        <div data-section className="rounded-xl border border-border bg-background">
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface">
-                <KeyRound className="h-4 w-4 text-foreground-secondary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Password</p>
-                <p className="font-mono text-xs text-muted tracking-wider">••••••••••••••••</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowChangePassword(true)}
-              className="rounded-lg border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface/80"
+        {/* ════════════════════ LOGIN SETTINGS ════════════════════ */}
+        <div>
+          <SectionHeader title="Login Settings" description="Manage your login credentials and authentication" />
+
+          <div className="space-y-3">
+            {/* Password */}
+            <div
+              data-section
+              className="group rounded-xl border border-border bg-background overflow-hidden transition-colors hover:border-border-hover"
             >
-              Change Password
-            </button>
-          </div>
-        </div>
-
-        {/* ── Two-Factor Authentication ──────────────────────── */}
-        <div data-section className="rounded-xl border border-border bg-background overflow-hidden">
-          <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{
-              background: twoFaEnabled
-                ? "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(34,197,94,0.02) 100%)"
-                : "linear-gradient(135deg, rgba(234,179,8,0.06) 0%, rgba(234,179,8,0.02) 100%)",
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg",
-                twoFaEnabled ? "bg-success/10" : "bg-warning/10",
-              )}>
-                {twoFaEnabled
-                  ? <ShieldCheck className="h-4.5 w-4.5 text-success" />
-                  : <ShieldOff className="h-4.5 w-4.5 text-warning" />
-                }
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Two-Factor Authentication
-                </p>
-                <p className="text-[11px] text-muted">
-                  {twoFaEnabled
-                    ? "Your account is protected with an authenticator app"
-                    : "Add an extra layer of security — requires a 6-digit code to log in"
-                  }
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => twoFaEnabled ? setShow2faDisable(true) : setShow2faSetup(true)}
-              className={cn(
-                "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                twoFaEnabled
-                  ? "bg-error/10 text-error hover:bg-error/20"
-                  : "bg-primary text-white hover:bg-primary/90",
-              )}
-            >
-              {twoFaEnabled ? "Disable 2FA" : "Enable 2FA"}
-            </button>
-          </div>
-
-          {/* Backup codes when enabled */}
-          {twoFaEnabled && (
-            <div className="border-t border-border/50 px-5 py-4">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted mb-2">Backup Codes</p>
-              <div className="flex flex-wrap gap-2">
-                {fakeBackupCodes.map((c) => (
-                  <span key={c} className="rounded-md bg-surface px-2.5 py-1 font-mono text-[11px] text-foreground-secondary">{c}</span>
-                ))}
-              </div>
-              <p className="mt-2 text-[10px] text-muted">Store these codes safely. Each can only be used once.</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Withdrawal Password ────────────────────────────── */}
-        <div data-section className="rounded-xl border border-border bg-background overflow-hidden">
-          <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{
-              background: withdrawalPwEnabled
-                ? "linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(34,197,94,0.02) 100%)"
-                : "linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(99,102,241,0.02) 100%)",
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg",
-                withdrawalPwEnabled ? "bg-success/10" : "bg-primary/10",
-              )}>
-                <Lock className={cn("h-4 w-4", withdrawalPwEnabled ? "text-success" : "text-primary")} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Withdrawal Password</p>
-                <p className="text-[11px] text-muted max-w-md">
-                  {withdrawalPwEnabled
-                    ? "Withdrawals are protected — enter your withdrawal password instead of email/2FA verification"
-                    : "Set a dedicated password for faster, more secure withdrawals"
-                  }
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowWithdrawalPw(true)}
-              className={cn(
-                "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors shrink-0",
-                withdrawalPwEnabled
-                  ? "bg-surface border border-border text-foreground hover:bg-surface/80"
-                  : "bg-primary text-white hover:bg-primary/90",
-              )}
-            >
-              {withdrawalPwEnabled ? "Change" : "Enable"}
-            </button>
-          </div>
-        </div>
-
-        {/* ── Active Sessions ────────────────────────────────── */}
-        <div data-section className="rounded-xl border border-border bg-background">
-          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface">
-              <Monitor className="h-4 w-4 text-foreground-secondary" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Active Sessions</h2>
-              <p className="text-[11px] text-muted">Devices currently logged into your account</p>
-            </div>
-          </div>
-          <div className="divide-y divide-border/50">
-            {sessions.map((s) => (
-              <div key={s.id} className="flex items-center gap-3.5 px-5 py-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
-                  <Monitor className="h-3.5 w-3.5 text-muted" />
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface">
+                    <KeyRound className="h-[18px] w-[18px] text-foreground-secondary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Password</p>
+                    <p className="font-mono text-[11px] text-muted tracking-widest mt-0.5">••••••••••••••••</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  className="rounded-lg border border-border px-4 py-2 text-xs font-semibold text-foreground-secondary transition-all hover:bg-surface hover:text-foreground hover:border-border-hover"
+                >
+                  Change Password
+                </button>
+              </div>
+            </div>
+
+            {/* 2FA */}
+            <div
+              data-section
+              className="group rounded-xl border overflow-hidden transition-colors"
+              style={{
+                borderColor: twoFaEnabled ? "rgba(34,197,94,0.2)" : "var(--border)",
+              }}
+            >
+              <div
+                className="flex items-center justify-between px-5 py-4 border-l-[3px]"
+                style={{
+                  borderLeftColor: twoFaEnabled ? "var(--success)" : "var(--warning)",
+                  background: twoFaEnabled
+                    ? "linear-gradient(135deg, rgba(34,197,94,0.05) 0%, transparent 60%)"
+                    : "linear-gradient(135deg, rgba(234,179,8,0.05) 0%, transparent 60%)",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl",
+                    twoFaEnabled ? "bg-success/10" : "bg-warning/10",
+                  )}>
+                    {twoFaEnabled
+                      ? <ShieldCheck className="h-[18px] w-[18px] text-success" />
+                      : <ShieldOff className="h-[18px] w-[18px] text-warning" />
+                    }
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Two-Factor Authentication</p>
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                        twoFaEnabled ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                      )}>
+                        {twoFaEnabled ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted mt-0.5">
+                      {twoFaEnabled
+                        ? "Your account is protected with an authenticator app"
+                        : "Add an extra layer of security — requires a 6-digit code to log in"
+                      }
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => twoFaEnabled ? setShow2faDisable(true) : setShow2faSetup(true)}
+                  className={cn(
+                    "rounded-lg px-4 py-2 text-xs font-semibold transition-colors shrink-0",
+                    twoFaEnabled
+                      ? "bg-error/10 text-error hover:bg-error/20 border border-error/20"
+                      : "bg-primary text-white hover:bg-primary/90",
+                  )}
+                >
+                  {twoFaEnabled ? "Disable 2FA" : "Enable 2FA"}
+                </button>
+              </div>
+
+              {twoFaEnabled && (
+                <div className="border-t border-border/40 bg-surface/20 px-5 py-3.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Backup Codes</p>
+                    <button className="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors">
+                      Regenerate
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {fakeBackupCodes.map((c) => (
+                      <span key={c} className="rounded-md bg-background border border-border/50 px-2.5 py-1 font-mono text-[11px] text-foreground-secondary">{c}</span>
+                    ))}
+                  </div>
+                  <p className="mt-2.5 text-[10px] text-muted/70">Store these safely. Each code can only be used once.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ════════════════════ WITHDRAWAL SECURITY ════════════════════ */}
+        <div>
+          <SectionHeader title="Withdrawal Security" description="Protect your funds with additional verification" />
+
+          <div
+            data-section
+            className="group rounded-xl border overflow-hidden transition-colors"
+            style={{
+              borderColor: withdrawalPwEnabled ? "rgba(34,197,94,0.2)" : "var(--border)",
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-5 py-4 border-l-[3px]"
+              style={{
+                borderLeftColor: withdrawalPwEnabled ? "var(--success)" : "var(--primary)",
+                background: withdrawalPwEnabled
+                  ? "linear-gradient(135deg, rgba(34,197,94,0.05) 0%, transparent 60%)"
+                  : "linear-gradient(135deg, rgba(var(--primary-rgb, 99,102,241),0.05) 0%, transparent 60%)",
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-xl",
+                  withdrawalPwEnabled ? "bg-success/10" : "bg-primary/10",
+                )}>
+                  <Lock className={cn("h-[18px] w-[18px]", withdrawalPwEnabled ? "text-success" : "text-primary")} />
+                </div>
+                <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground">{s.device}</p>
-                    {s.current && (
-                      <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-success">
-                        Current
+                    <p className="text-sm font-semibold text-foreground">Withdrawal Password</p>
+                    {withdrawalPwEnabled && (
+                      <span className="rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-success">
+                        Active
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="flex items-center gap-1 text-[10px] text-muted">
-                      <Globe className="h-2.5 w-2.5" />{s.ip}
-                    </span>
-                    <span className="text-[10px] text-muted">·</span>
-                    <span className="text-[10px] text-muted">{s.location}</span>
-                    <span className="text-[10px] text-muted">·</span>
-                    <span className="flex items-center gap-1 text-[10px] text-muted">
-                      <Clock className="h-2.5 w-2.5" />{s.lastActive}
-                    </span>
-                  </div>
+                  <p className="text-[11px] text-muted mt-0.5 max-w-md">
+                    {withdrawalPwEnabled
+                      ? "Withdrawals are protected — enter your withdrawal password instead of email/2FA each time"
+                      : "Set a dedicated password to confirm withdrawals faster and more securely"
+                    }
+                  </p>
                 </div>
-                {!s.current && (
-                  <button
-                    onClick={() => revokeSession(s.id)}
-                    className="rounded-lg px-2.5 py-1 text-[10px] font-semibold text-error bg-error/10 hover:bg-error/20 transition-colors"
-                  >
-                    Revoke
-                  </button>
+              </div>
+              <button
+                onClick={() => setShowWithdrawalPw(true)}
+                className={cn(
+                  "rounded-lg px-4 py-2 text-xs font-semibold transition-colors shrink-0",
+                  withdrawalPwEnabled
+                    ? "border border-border text-foreground-secondary hover:bg-surface hover:text-foreground"
+                    : "bg-primary text-white hover:bg-primary/90",
                 )}
-              </div>
-            ))}
+              >
+                {withdrawalPwEnabled ? "Change" : "Enable"}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── Activity Log ───────────────────────────────────── */}
-        <div data-section className="rounded-xl border border-border bg-background">
-          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface">
-              <Clock className="h-4 w-4 text-foreground-secondary" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Activity Log</h2>
-              <p className="text-[11px] text-muted">Recent actions performed on this account</p>
-            </div>
-          </div>
+        {/* ════════════════════ ACTIVE SESSIONS ════════════════════ */}
+        <div>
+          <SectionHeader title="Active Sessions" description="Devices currently logged into your account" />
 
-          {/* Table header */}
-          <div className="hidden sm:flex items-center border-b border-border/50 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider text-muted">
-            <span className="w-8" />
-            <span className="flex-1">Action</span>
-            <span className="w-[120px]">User</span>
-            <span className="w-[100px]">IP Address</span>
-            <span className="w-[120px] text-right">Time</span>
-          </div>
-
-          <div className="divide-y divide-border/50">
-            {fakeActivityLog.map((log) => (
-              <div key={log.id} className="flex items-center px-5 py-3 transition-colors hover:bg-surface/40">
-                {/* Icon */}
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface mr-3">
-                  <log.icon className="h-3.5 w-3.5 text-muted" />
+          <div data-section className="rounded-xl border border-border bg-background overflow-hidden">
+            <div className="divide-y divide-border/40">
+              {sessions.map((s) => (
+                <div key={s.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-surface/30">
+                  <div className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                    s.current ? "bg-primary/10" : "bg-surface",
+                  )}>
+                    <Monitor className={cn("h-4 w-4", s.current ? "text-primary" : "text-muted")} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{s.device}</p>
+                      {s.current && (
+                        <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-success">
+                          This Device
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="flex items-center gap-1 text-[10px] text-muted">
+                        <Globe className="h-2.5 w-2.5 opacity-60" />{s.ip}
+                      </span>
+                      <span className="text-[10px] text-muted">{s.location}</span>
+                      <span className="flex items-center gap-1 text-[10px] text-muted">
+                        <Clock className="h-2.5 w-2.5 opacity-60" />{s.lastActive}
+                      </span>
+                    </div>
+                  </div>
+                  {!s.current && (
+                    <button
+                      onClick={() => revokeSession(s.id)}
+                      className="rounded-lg border border-error/20 px-3 py-1.5 text-[10px] font-semibold text-error hover:bg-error/10 transition-colors"
+                    >
+                      Revoke
+                    </button>
+                  )}
                 </div>
-
-                {/* Action + detail */}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground leading-none">{log.action}</p>
-                  <p className="mt-1 text-[10px] text-muted leading-none truncate">{log.detail}</p>
-                </div>
-
-                {/* User */}
-                <span className="hidden sm:block w-[120px] shrink-0 truncate text-[11px] text-muted font-mono">{log.user}</span>
-
-                {/* IP */}
-                <span className="hidden sm:block w-[100px] shrink-0 text-[11px] text-muted font-mono">{log.ip}</span>
-
-                {/* Time */}
-                <span className="w-[120px] shrink-0 text-right text-[11px] text-muted tabular-nums">{formatTime(log.time)}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* ── Delete Account ─────────────────────────────────── */}
-        <div data-section className="rounded-xl border border-error/20 bg-background overflow-hidden">
+        {/* ════════════════════ ACTIVITY LOG ════════════════════ */}
+        <div>
+          <SectionHeader title="Activity Log" description="Recent actions performed on this account by all team members" />
+
+          <div data-section className="rounded-xl border border-border bg-background overflow-hidden">
+            {/* Table header */}
+            <div className="hidden sm:flex items-center border-b border-border/50 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <span className="w-10" />
+              <span className="flex-1">Action</span>
+              <span className="w-[130px]">User</span>
+              <span className="w-[110px]">IP Address</span>
+              <span className="w-[130px] text-right">Time</span>
+            </div>
+
+            <div className="divide-y divide-border/30">
+              {fakeActivityLog.map((log) => (
+                <div key={log.id} className="flex items-center px-5 py-3 transition-colors hover:bg-surface/30">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface mr-3">
+                    <log.icon className="h-3.5 w-3.5 text-muted" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-foreground leading-none">{log.action}</p>
+                    <p className="mt-1 text-[10px] text-muted leading-none truncate">{log.detail}</p>
+                  </div>
+
+                  <span className="hidden sm:block w-[130px] shrink-0 truncate text-[11px] text-foreground-secondary font-mono">{log.user}</span>
+                  <span className="hidden sm:block w-[110px] shrink-0 text-[11px] text-muted font-mono">{log.ip}</span>
+                  <span className="w-[130px] shrink-0 text-right text-[11px] text-muted tabular-nums">{formatTime(log.time)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ════════════════════ DANGER ZONE ════════════════════ */}
+        <div>
+          <SectionHeader title="Danger Zone" description="Irreversible actions — proceed with caution" />
+
           <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(239,68,68,0.02) 100%)" }}
+            data-section
+            className="rounded-xl border border-error/20 bg-background overflow-hidden"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-error/10">
-                <Trash2 className="h-4 w-4 text-error" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-error">Delete Account</p>
-                <p className="text-[11px] text-muted">
-                  Permanently remove your account and all associated data. This action is irreversible.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowDeleteAccount(true)}
-              className="rounded-lg bg-error px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-error/90 shrink-0"
+            <div
+              className="flex items-center justify-between px-5 py-4 border-l-[3px] border-l-error"
+              style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.04) 0%, transparent 60%)" }}
             >
-              Delete Account
-            </button>
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-error/10">
+                  <Trash2 className="h-[18px] w-[18px] text-error" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-error">Delete Account</p>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Permanently remove your account and all associated data. This action is irreversible.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeleteAccount(true)}
+                className="rounded-lg border border-error/30 bg-error/10 px-4 py-2 text-xs font-semibold text-error transition-colors hover:bg-error hover:text-white shrink-0"
+              >
+                Delete Account
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ═══════════════════════ MODALS ═══════════════════════ */}
 
-      {/* Change Password Modal */}
       {showChangePassword && (
         <Modal onClose={() => { setShowChangePassword(false); setPasswords({ current: "", new: "", confirm: "" }); }}>
           <ModalHeader title="Change Password" onClose={() => { setShowChangePassword(false); setPasswords({ current: "", new: "", confirm: "" }); }} />
           <div className="p-5 space-y-4">
             <div>
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted">Current Password</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted">Current Password</label>
               <div className="relative mt-1.5">
                 <input
                   type={showPw ? "text" : "password"}
                   value={passwords.current}
                   onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
-                  className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 pr-9 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary transition-colors"
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 pr-9 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                   placeholder="Enter current password"
                 />
                 <button onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors">
@@ -428,29 +470,29 @@ export function SecurityContent({ userName, userEmail }: Props) {
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted">New Password</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted">New Password</label>
               <input
                 type="password"
                 value={passwords.new}
                 onChange={(e) => setPasswords((p) => ({ ...p, new: e.target.value }))}
-                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary transition-colors"
+                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                 placeholder="Enter new password"
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted">Confirm New Password</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted">Confirm New Password</label>
               <input
                 type="password"
                 value={passwords.confirm}
                 onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
-                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary transition-colors"
+                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                 placeholder="Confirm new password"
               />
             </div>
             <button
               disabled={!passwords.current || !passwords.new || passwords.new !== passwords.confirm}
               onClick={() => { setShowChangePassword(false); setPasswords({ current: "", new: "", confirm: "" }); }}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Update Password
             </button>
@@ -458,40 +500,39 @@ export function SecurityContent({ userName, userEmail }: Props) {
         </Modal>
       )}
 
-      {/* 2FA Setup Modal */}
       {show2faSetup && (
         <Modal onClose={() => { setShow2faSetup(false); setCode2fa(""); }}>
-          <ModalHeader title="Enable 2FA" onClose={() => { setShow2faSetup(false); setCode2fa(""); }} />
+          <ModalHeader title="Enable Two-Factor Authentication" onClose={() => { setShow2faSetup(false); setCode2fa(""); }} />
           <div className="p-5 space-y-5">
             <div className="flex flex-col items-center gap-3">
               <p className="text-[11px] text-muted text-center">Scan this QR code with your authenticator app</p>
-              <div className="rounded-xl bg-white p-3">
+              <div className="rounded-xl bg-white p-3 shadow-sm">
                 <FakeQR size={160} />
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted mb-1.5">Or enter this key manually</p>
-              <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
-                <span className="flex-1 font-mono text-xs text-foreground-secondary tracking-wider">{fakeSecret}</span>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1.5">Or enter this key manually</p>
+              <div className="flex items-center gap-2 rounded-lg bg-surface border border-border/50 px-3 py-2.5">
+                <span className="flex-1 font-mono text-xs text-foreground-secondary tracking-widest">{fakeSecret}</span>
                 <button onClick={() => copyText(fakeSecret)} className="shrink-0 text-muted hover:text-foreground transition-colors">
                   {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted mb-1.5">Verification Code</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1.5">Verification Code</p>
               <input
                 type="text"
                 value={code2fa}
                 onChange={(e) => setCode2fa(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="000000"
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-foreground placeholder:text-muted/40 outline-none focus:border-primary transition-colors"
+                className="w-full rounded-lg border border-border bg-surface px-3 py-3 text-center font-mono text-xl tracking-[0.4em] text-foreground placeholder:text-muted/30 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
               />
             </div>
             <button
               onClick={() => { setTwoFaEnabled(true); setShow2faSetup(false); setCode2fa(""); }}
               disabled={code2fa.length !== 6}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Verify & Enable
             </button>
@@ -499,10 +540,9 @@ export function SecurityContent({ userName, userEmail }: Props) {
         </Modal>
       )}
 
-      {/* 2FA Disable Modal */}
       {show2faDisable && (
         <Modal onClose={() => { setShow2faDisable(false); setCode2fa(""); }}>
-          <ModalHeader title="Disable 2FA" onClose={() => { setShow2faDisable(false); setCode2fa(""); }} />
+          <ModalHeader title="Disable Two-Factor Authentication" onClose={() => { setShow2faDisable(false); setCode2fa(""); }} />
           <div className="p-5 space-y-4">
             <div className="rounded-xl bg-error/5 border border-error/10 px-4 py-3">
               <p className="text-xs text-error/90 leading-relaxed">
@@ -510,19 +550,19 @@ export function SecurityContent({ userName, userEmail }: Props) {
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted mb-1.5">Enter your 2FA code to confirm</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1.5">Enter your 2FA code to confirm</p>
               <input
                 type="text"
                 value={code2fa}
                 onChange={(e) => setCode2fa(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="000000"
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-foreground placeholder:text-muted/40 outline-none focus:border-error transition-colors"
+                className="w-full rounded-lg border border-border bg-surface px-3 py-3 text-center font-mono text-xl tracking-[0.4em] text-foreground placeholder:text-muted/30 outline-none focus:border-error focus:ring-1 focus:ring-error/20 transition-all"
               />
             </div>
             <button
               onClick={() => { setTwoFaEnabled(false); setShow2faDisable(false); setCode2fa(""); }}
               disabled={code2fa.length !== 6}
-              className="w-full rounded-lg bg-error py-2.5 text-sm font-semibold text-white transition-colors hover:bg-error/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-error py-2.5 text-sm font-semibold text-white transition-all hover:bg-error/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Disable 2FA
             </button>
@@ -530,7 +570,6 @@ export function SecurityContent({ userName, userEmail }: Props) {
         </Modal>
       )}
 
-      {/* Withdrawal Password Modal */}
       {showWithdrawalPw && (
         <Modal onClose={() => { setShowWithdrawalPw(false); setWithdrawalPwVal({ password: "", confirm: "" }); }}>
           <ModalHeader title={withdrawalPwEnabled ? "Change Withdrawal Password" : "Set Withdrawal Password"} onClose={() => { setShowWithdrawalPw(false); setWithdrawalPwVal({ password: "", confirm: "" }); }} />
@@ -541,29 +580,29 @@ export function SecurityContent({ userName, userEmail }: Props) {
               </p>
             </div>
             <div>
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted">Withdrawal Password</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted">Withdrawal Password</label>
               <input
                 type="password"
                 value={withdrawalPw.password}
                 onChange={(e) => setWithdrawalPwVal((p) => ({ ...p, password: e.target.value }))}
-                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary transition-colors"
+                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                 placeholder="Enter withdrawal password"
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium uppercase tracking-wider text-muted">Confirm Password</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted">Confirm Password</label>
               <input
                 type="password"
                 value={withdrawalPw.confirm}
                 onChange={(e) => setWithdrawalPwVal((p) => ({ ...p, confirm: e.target.value }))}
-                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary transition-colors"
+                className="mt-1.5 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                 placeholder="Confirm withdrawal password"
               />
             </div>
             <button
               disabled={!withdrawalPw.password || withdrawalPw.password !== withdrawalPw.confirm}
               onClick={() => { setWithdrawalPwEnabled(true); setShowWithdrawalPw(false); setWithdrawalPwVal({ password: "", confirm: "" }); }}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {withdrawalPwEnabled ? "Update Withdrawal Password" : "Enable Withdrawal Password"}
             </button>
@@ -571,7 +610,6 @@ export function SecurityContent({ userName, userEmail }: Props) {
         </Modal>
       )}
 
-      {/* Delete Account Modal */}
       {showDeleteAccount && (
         <Modal onClose={() => { setShowDeleteAccount(false); setDeleteConfirm(""); }}>
           <ModalHeader title="Delete Account" onClose={() => { setShowDeleteAccount(false); setDeleteConfirm(""); }} />
@@ -583,7 +621,7 @@ export function SecurityContent({ userName, userEmail }: Props) {
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted mb-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1.5">
                 Type <span className="text-error font-bold">DELETE</span> to confirm
               </p>
               <input
@@ -591,12 +629,12 @@ export function SecurityContent({ userName, userEmail }: Props) {
                 value={deleteConfirm}
                 onChange={(e) => setDeleteConfirm(e.target.value)}
                 placeholder="DELETE"
-                className="w-full rounded-lg border border-error/30 bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-error transition-colors"
+                className="w-full rounded-lg border border-error/30 bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted/40 outline-none focus:border-error focus:ring-1 focus:ring-error/20 transition-all"
               />
             </div>
             <button
               disabled={deleteConfirm !== "DELETE"}
-              className="w-full rounded-lg bg-error py-2.5 text-sm font-semibold text-white transition-colors hover:bg-error/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-error py-2.5 text-sm font-semibold text-white transition-all hover:bg-error/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Permanently Delete Account
             </button>
