@@ -68,6 +68,7 @@ export const NAV_LINKS = [
 export const DASHBOARD_NAV = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
   { label: "Wallet", href: "/dashboard/wallet", icon: "Wallet" },
+  { label: "Swap", href: "/dashboard/swap", icon: "Repeat" },
   { label: "Payments", href: "/dashboard/payments", icon: "ArrowLeftRight" },
   { label: "Payment Links", href: "/dashboard/links", icon: "Link" },
   { label: "Analytics", href: "/dashboard/analytics", icon: "BarChart3" },

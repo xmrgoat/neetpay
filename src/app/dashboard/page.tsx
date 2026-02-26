@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { RevenueSummary } from "@/components/dashboard/revenue-summary";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
-import { WalletCard } from "@/components/dashboard/wallet-card";
-import { CryptoAssets } from "@/components/dashboard/crypto-assets";
+import { DashboardRightColumn } from "@/components/dashboard/dashboard-right-column";
 import { OverviewKpis } from "@/components/dashboard/overview-kpis";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -173,18 +172,11 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── RIGHT COLUMN : 3 cols — independently scrollable ── */}
-      <div className="relative min-h-0 overflow-y-auto overflow-x-hidden lg:col-span-3 pb-4 no-scrollbar">
-        {/* Wallet card — sticky at top */}
-        <div className="sticky top-0 z-20 pb-2">
-          <WalletCard totalUsd={fakeWallet.totalUsd} change24h={2_342.00} holdings={fakeWallet.holdings} />
-          {/* Fade mask — assets disappear under the card */}
-          <div className="pointer-events-none absolute -bottom-4 left-0 right-0 h-6 bg-gradient-to-b from-surface to-transparent" />
-        </div>
-        {/* Assets — scroll underneath the card */}
-        <div className="relative mt-1">
-          <CryptoAssets holdings={fakeWallet.holdings} />
-        </div>
-      </div>
+      <DashboardRightColumn
+        totalUsd={fakeWallet.totalUsd}
+        change24h={2_342.00}
+        holdings={fakeWallet.holdings}
+      />
 
     </div>
   );

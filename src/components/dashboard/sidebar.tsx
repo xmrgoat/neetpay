@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Wallet,
   ArrowLeftRight,
+  Repeat,
   Link as LinkIcon,
   BarChart3,
   Code,
@@ -25,6 +26,7 @@ const STORAGE_KEY = "sidebar-collapsed";
 const MAIN_NAV = [
   { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Wallet", icon: Wallet, href: "/dashboard/wallet" },
+  { label: "Swap", icon: Repeat, href: "/dashboard/swap" },
   { label: "Payments", icon: ArrowLeftRight, href: "/dashboard/payments" },
   { label: "Payment Links", icon: LinkIcon, href: "/dashboard/links" },
   { label: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
