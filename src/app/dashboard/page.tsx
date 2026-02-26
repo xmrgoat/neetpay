@@ -4,9 +4,8 @@ import { RevenueSummary } from "@/components/dashboard/revenue-summary";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { DashboardRightColumn } from "@/components/dashboard/dashboard-right-column";
 import { OverviewKpis } from "@/components/dashboard/overview-kpis";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import type { PaymentStatus } from "@/lib/constants";
+import { RecentTransactions } from "@/components/dashboard/recent-transactions";
+import type { Transaction } from "@/components/dashboard/recent-transactions";
 
 // ─── Fake data ──────────────────────────────────────────────────────────────
 
@@ -63,36 +62,27 @@ const fakeKpis = {
   activeLinks: 23,
 };
 
-const fakeRecentTxs = [
-  { id: "tx_1", amount: 1_250.00, status: "paid" as const, trackId: "pay_8f3k2m9x4n1j", payCurrency: "BTC", createdAt: new Date(Date.now() - 12 * 60_000) },
-  { id: "tx_2", amount: 89.99, status: "confirming" as const, trackId: "pay_2v7b4c8d1f6g", payCurrency: "ETH", createdAt: new Date(Date.now() - 34 * 60_000) },
-  { id: "tx_3", amount: 450.00, status: "paid" as const, trackId: "pay_5t8r1q4w7e2y", payCurrency: "XMR", createdAt: new Date(Date.now() - 2.5 * 3600_000) },
-  { id: "tx_4", amount: 2_100.00, status: "paid" as const, trackId: "pay_9m3n6b1v4c7x", payCurrency: "SOL", createdAt: new Date(Date.now() - 5 * 3600_000) },
-  { id: "tx_5", amount: 34.50, status: "pending" as const, trackId: "pay_1a2s3d4f5g6h", payCurrency: "USDT", createdAt: new Date(Date.now() - 8 * 3600_000) },
-  { id: "tx_6", amount: 780.00, status: "paid" as const, trackId: "pay_7k8l9m0n1o2p", payCurrency: "BTC", createdAt: new Date(Date.now() - 12 * 3600_000) },
+const fakePaymentsSummary = {
+  revenueToday: 3_420,
+  pendingPayout: 1_200,
+  pendingCount: 1,
+  successRate: 66.1,
+  totalProcessed: 1_200,
+  paymentMethods: [
+    { currency: "BTC", percentage: 24.6 },
+    { currency: "ETH", percentage: 7.1 },
+    { currency: "XMR", percentage: 7.3 },
+  ],
+};
+
+const fakeRecentTxs: Transaction[] = [
+  { id: "tx_1", amount: 1_250.00, cryptoAmount: 0.00045158, status: "paid", trackId: "138029241", payCurrency: "BTC", txHash: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", createdAt: new Date(Date.now() - 12 * 60_000) },
+  { id: "tx_2", amount: 89.99, cryptoAmount: 0.00591233, status: "confirming", trackId: "138029255", payCurrency: "ETH", txHash: "0xf4d08de062d6d1f0205786a9c5c849c080bbfb8e0b7ddc1fb10bd3485c2b6fe3", address: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18", createdAt: new Date(Date.now() - 34 * 60_000) },
+  { id: "tx_3", amount: 450.00, cryptoAmount: 2.75124, status: "paid", trackId: "138029198", payCurrency: "XMR", txHash: "e8c4f2a1b3d5e7f9a0c2d4e6f8a1b3c5d7e9f0a2c4d6e8f1a3b5c7d9e0f2a4b6", address: "47sghzufGhJJDQEbScMCwVBimTvCZRMgThK5WxZQk8HMdjT7daW8aP7VhMN9RPF5", createdAt: new Date(Date.now() - 2.5 * 3600_000) },
+  { id: "tx_4", amount: 2_100.00, cryptoAmount: 12.054, status: "paid", trackId: "138028901", payCurrency: "SOL", txHash: "5UxKm8Yr9tEj2Qp4wR7vN1mC6bF3dG8hJ0kL2nA4pB6qD9sE1fH3iK5lM7nO9pQ", address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgHkv", createdAt: new Date(Date.now() - 5 * 3600_000) },
+  { id: "tx_5", amount: 34.50, cryptoAmount: 34.50, status: "pending", trackId: "138029267", payCurrency: "USDT", txHash: "", address: "TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7", createdAt: new Date(Date.now() - 8 * 3600_000) },
+  { id: "tx_6", amount: 780.00, cryptoAmount: 0.00017216, status: "paid", trackId: "138028734", payCurrency: "BTC", txHash: "c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8", address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", createdAt: new Date(Date.now() - 12 * 3600_000) },
 ];
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-const statusDot: Record<PaymentStatus, string> = {
-  pending: "bg-amber-500", confirming: "bg-blue-500", paid: "bg-emerald-500",
-  expired: "bg-neutral-400", failed: "bg-red-500", underpaid: "bg-orange-500", refunded: "bg-purple-500",
-};
-const statusLabel: Record<PaymentStatus, string> = {
-  pending: "Pending", confirming: "Confirming", paid: "Paid",
-  expired: "Expired", failed: "Failed", underpaid: "Underpaid", refunded: "Refunded",
-};
-
-function relativeTime(date: Date | string): string {
-  const diff = Date.now() - new Date(date).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return d < 30 ? `${d}d ago` : `${Math.floor(d / 30)}mo ago`;
-}
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
@@ -119,7 +109,16 @@ export default async function DashboardPage() {
         {/* Summary + Chart */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-8">
           <div className="sm:col-span-3">
-            <RevenueSummary today={fakeRevenue.today} week={fakeRevenue.week} month={fakeRevenue.month} total={fakeRevenue.total} />
+            <RevenueSummary
+              today={fakeRevenue.today}
+              week={fakeRevenue.week}
+              month={fakeRevenue.month}
+              total={fakeRevenue.total}
+              successRate={fakePaymentsSummary.successRate}
+              pendingPayout={fakePaymentsSummary.pendingPayout}
+              pendingCount={fakePaymentsSummary.pendingCount}
+              paymentMethods={fakePaymentsSummary.paymentMethods}
+            />
           </div>
           <div className="sm:col-span-5">
             <OverviewCharts volumeByDay={fakeVolumeByDay} />
@@ -127,48 +126,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="rounded-xl border border-border bg-background">
-          <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-            <h2 className="text-sm font-medium text-foreground">Recent Transactions</h2>
-            <Link href="/dashboard/payments" className="flex items-center gap-1 text-[11px] text-muted hover:text-foreground transition-colors">
-              See All <ArrowRight size={11} />
-            </Link>
-          </div>
-          <div className="hidden sm:flex items-center gap-4 border-b border-border/50 px-5 py-2 text-[10px] font-medium uppercase tracking-wider text-muted">
-            <span className="w-9" />
-            <span className="flex-1">Amount</span>
-            <span className="w-24">Track ID</span>
-            <span className="w-16 text-right">Crypto</span>
-            <span className="w-16 text-right">Time</span>
-          </div>
-          <div className="divide-y divide-border/50">
-            {fakeRecentTxs.map((tx) => (
-              <div key={tx.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface/50">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
-                  <span className={`h-2 w-2 rounded-full ${statusDot[tx.status as PaymentStatus] ?? "bg-muted"}`} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground tabular-nums">
-                      ${tx.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </span>
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase ${
-                      tx.status === "paid" ? "bg-success-muted text-success"
-                      : tx.status === "pending" ? "bg-warning-muted text-warning"
-                      : tx.status === "confirming" ? "bg-info-muted text-info"
-                      : "bg-surface text-muted"
-                    }`}>
-                      {statusLabel[tx.status as PaymentStatus] ?? tx.status}
-                    </span>
-                  </div>
-                </div>
-                <span className="hidden sm:block w-24 truncate font-mono text-[11px] text-muted">{tx.trackId}</span>
-                <span className="w-16 text-right font-mono text-xs font-medium text-foreground-secondary uppercase">{tx.payCurrency}</span>
-                <span className="w-16 text-right text-[11px] text-muted tabular-nums">{relativeTime(tx.createdAt)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <RecentTransactions transactions={fakeRecentTxs} />
       </div>
 
       {/* ── RIGHT COLUMN : 3 cols — independently scrollable ── */}

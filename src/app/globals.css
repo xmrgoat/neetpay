@@ -3,45 +3,45 @@
 /* ------------------------------------------------
    Dark mode custom variant (next-themes, class-based)
    ------------------------------------------------ */
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *, .midnight, .midnight *, .ember, .ember *, .ocean, .ocean *, .emerald, .emerald *, .rose, .rose *));
 
 /* ------------------------------------------------
    Semantic color tokens — Light
    ------------------------------------------------ */
 :root {
-  --background: #ffffff;
-  --surface: #f9f9f9;
-  --elevated: #ffffff;
-  --border: #e8e8e8;
-  --border-hover: #d4d4d4;
-  --foreground: #0a0a0a;
-  --foreground-secondary: #525252;
-  --muted: #a3a3a3;
+  --background: #f7f7f8;
+  --surface: #efeff1;
+  --elevated: #f7f7f8;
+  --border: #dcdce0;
+  --border-hover: #c8c8ce;
+  --foreground: #1a1a1e;
+  --foreground-secondary: #5c5c66;
+  --muted: #9393a0;
   --primary: #ff6600;
   --primary-hover: #e65c00;
   --primary-muted: rgba(255, 102, 0, 0.08);
-  --success: #22c55e;
-  --success-muted: rgba(34, 197, 94, 0.1);
-  --error: #ef4444;
-  --error-muted: rgba(239, 68, 68, 0.1);
-  --warning: #eab308;
-  --warning-muted: rgba(234, 179, 8, 0.1);
-  --info: #3b82f6;
-  --info-muted: rgba(59, 130, 246, 0.1);
+  --success: #16a34a;
+  --success-muted: rgba(22, 163, 74, 0.1);
+  --error: #dc2626;
+  --error-muted: rgba(220, 38, 38, 0.1);
+  --warning: #ca8a04;
+  --warning-muted: rgba(202, 138, 4, 0.1);
+  --info: #2563eb;
+  --info-muted: rgba(37, 99, 235, 0.1);
 }
 
 /* ------------------------------------------------
    Semantic color tokens — Dark
    ------------------------------------------------ */
 .dark {
-  --background: #09090b;
-  --surface: #0f0f12;
-  --elevated: #18181b;
-  --border: #232329;
-  --border-hover: #2e2e36;
-  --foreground: #fafafa;
-  --foreground-secondary: #a1a1aa;
-  --muted: #52525b;
+  --background: #0c0c0f;
+  --surface: #121216;
+  --elevated: #1a1a1f;
+  --border: #25252c;
+  --border-hover: #31313a;
+  --foreground: #ececef;
+  --foreground-secondary: #9d9da8;
+  --muted: #56565f;
   --primary: #ff6600;
   --primary-hover: #ff7a1a;
   --primary-muted: rgba(255, 102, 0, 0.1);
@@ -53,6 +53,131 @@
   --warning-muted: rgba(234, 179, 8, 0.12);
   --info: #3b82f6;
   --info-muted: rgba(59, 130, 246, 0.12);
+}
+
+/* ------------------------------------------------
+   Semantic color tokens — Midnight (deep navy blue)
+   ------------------------------------------------ */
+.midnight {
+  --background: #0b0e1a;
+  --surface: #101525;
+  --elevated: #171d33;
+  --border: #1e2640;
+  --border-hover: #2a3455;
+  --foreground: #e8ecf4;
+  --foreground-secondary: #8b95b0;
+  --muted: #4e5672;
+  --primary: #ff6600;
+  --primary-hover: #ff7a1a;
+  --primary-muted: rgba(255, 102, 0, 0.1);
+  --success: #34d399;
+  --success-muted: rgba(52, 211, 153, 0.12);
+  --error: #f87171;
+  --error-muted: rgba(248, 113, 113, 0.12);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.12);
+  --info: #60a5fa;
+  --info-muted: rgba(96, 165, 250, 0.12);
+}
+
+/* ------------------------------------------------
+   Semantic color tokens — Ember (warm charcoal)
+   ------------------------------------------------ */
+.ember {
+  --background: #110a06;
+  --surface: #1a0f08;
+  --elevated: #231710;
+  --border: #2e1d12;
+  --border-hover: #3d2818;
+  --foreground: #f5ebe4;
+  --foreground-secondary: #b09a88;
+  --muted: #6b5744;
+  --primary: #ff6600;
+  --primary-hover: #ff7a1a;
+  --primary-muted: rgba(255, 102, 0, 0.12);
+  --success: #4ade80;
+  --success-muted: rgba(74, 222, 128, 0.12);
+  --error: #fb7185;
+  --error-muted: rgba(251, 113, 133, 0.12);
+  --warning: #fcd34d;
+  --warning-muted: rgba(252, 211, 77, 0.12);
+  --info: #38bdf8;
+  --info-muted: rgba(56, 189, 248, 0.12);
+}
+
+/* ------------------------------------------------
+   Semantic color tokens — Ocean (deep teal)
+   ------------------------------------------------ */
+.ocean {
+  --background: #06100f;
+  --surface: #0a1918;
+  --elevated: #102221;
+  --border: #16302e;
+  --border-hover: #1f413e;
+  --foreground: #e4f3f2;
+  --foreground-secondary: #87b0ad;
+  --muted: #4a706d;
+  --primary: #ff6600;
+  --primary-hover: #ff7a1a;
+  --primary-muted: rgba(255, 102, 0, 0.1);
+  --success: #2dd4bf;
+  --success-muted: rgba(45, 212, 191, 0.12);
+  --error: #f87171;
+  --error-muted: rgba(248, 113, 113, 0.12);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.12);
+  --info: #22d3ee;
+  --info-muted: rgba(34, 211, 238, 0.12);
+}
+
+/* ------------------------------------------------
+   Semantic color tokens — Emerald (deep green)
+   ------------------------------------------------ */
+.emerald {
+  --background: #060f0b;
+  --surface: #0a1912;
+  --elevated: #10231a;
+  --border: #162e22;
+  --border-hover: #1f412f;
+  --foreground: #e4f4ec;
+  --foreground-secondary: #87b09a;
+  --muted: #4a705d;
+  --primary: #ff6600;
+  --primary-hover: #ff7a1a;
+  --primary-muted: rgba(255, 102, 0, 0.1);
+  --success: #34d399;
+  --success-muted: rgba(52, 211, 153, 0.12);
+  --error: #f87171;
+  --error-muted: rgba(248, 113, 113, 0.12);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.12);
+  --info: #60a5fa;
+  --info-muted: rgba(96, 165, 250, 0.12);
+}
+
+/* ------------------------------------------------
+   Semantic color tokens — Rose (dark rose/burgundy)
+   ------------------------------------------------ */
+.rose {
+  --background: #100609;
+  --surface: #190a10;
+  --elevated: #231017;
+  --border: #2e1620;
+  --border-hover: #3d1f2c;
+  --foreground: #f5e4ea;
+  --foreground-secondary: #b08896;
+  --muted: #6b4456;
+  --primary: #ff6600;
+  --primary-hover: #ff7a1a;
+  --primary-muted: rgba(255, 102, 0, 0.12);
+  --success: #4ade80;
+  --success-muted: rgba(74, 222, 128, 0.12);
+  --error: #fb7185;
+  --error-muted: rgba(251, 113, 133, 0.12);
+  --warning: #fcd34d;
+  --warning-muted: rgba(252, 211, 77, 0.12);
+  --info: #c084fc;
+  --info-muted: rgba(192, 132, 252, 0.12);
 }
 
 /* ------------------------------------------------

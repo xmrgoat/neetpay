@@ -3,69 +3,198 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
+import { DollarSign, Clock, CheckCircle2, TrendingUp } from "lucide-react";
+import { CRYPTO_COLORS } from "@/lib/constants";
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface PaymentMethodBreakdown {
+  currency: string;
+  percentage: number;
+}
 
 interface RevenueSummaryProps {
   today: number;
   week: number;
   month: number;
   total: number;
+  successRate: number;
+  pendingPayout: number;
+  pendingCount: number;
+  paymentMethods: PaymentMethodBreakdown[];
 }
 
-function formatCurrency(value: number): string {
-  return `$${value.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })}`;
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const CRYPTO_ICONS: Record<string, string> = {
+  BTC: "₿", ETH: "Ξ", SOL: "◎", XMR: "ɱ",
+  USDT: "₮", USDC: "$", TRX: "◈", BNB: "◆",
+  LTC: "Ł", DOGE: "Ð", TON: "◇", XRP: "✕",
+};
+
+function fmt(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-const rows = [
-  { key: "today", label: "Revenue today" },
-  { key: "week", label: "Revenue this week" },
-  { key: "month", label: "Revenue this month" },
-  { key: "total", label: "Total revenue" },
-] as const;
+function fmtFull(value: number): string {
+  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
-export function RevenueSummary({ today, week, month, total }: RevenueSummaryProps) {
+// ─── Mini donut ─────────────────────────────────────────────────────────────
+
+function MiniDonut({ percentage, size = 32 }: { percentage: number; size?: number }) {
+  const r = size * 0.4;
+  const c = Math.PI * 2 * r;
+  const fill = (percentage / 100) * c;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke="currentColor" strokeWidth="3"
+        className="text-border/40"
+      />
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke="var(--success)" strokeWidth="3"
+        strokeDasharray={`${fill} ${c - fill}`}
+        strokeDashoffset={c / 4}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
+export function RevenueSummary({
+  today,
+  week,
+  month,
+  total,
+  successRate,
+  pendingPayout,
+  pendingCount,
+  paymentMethods,
+}: RevenueSummaryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
       if (!containerRef.current) return;
-      const items = containerRef.current.querySelectorAll("[data-row]");
-      gsap.fromTo(
-        items,
-        { opacity: 0, x: -10 },
-        { opacity: 1, x: 0, duration: 0.4, stagger: 0.08, ease: "power2.out" }
+      const cards = containerRef.current.querySelectorAll("[data-card]");
+      const tl = gsap.timeline({
+        onComplete() {
+          gsap.set([containerRef.current!, ...cards], { clearProps: "transform,opacity" });
+        },
+      });
+      tl.fromTo(
+        cards,
+        { opacity: 0, y: 8, scale: 0.97 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.3, stagger: 0.04, ease: "power2.out" }
       );
     },
     { scope: containerRef }
   );
 
-  const values = { today, week, month, total };
-
   return (
     <div
       ref={containerRef}
-      className="flex h-full flex-col rounded-xl border border-border bg-background p-5"
+      className="flex h-full flex-col rounded-xl border border-border bg-background p-4"
     >
-      <div className="mb-4">
-        <h2 className="font-heading text-base font-semibold text-foreground">Summary</h2>
-        <p className="text-xs text-muted">Your revenue overview</p>
+      {/* ── Revenue Today ── */}
+      <div
+        data-card
+        className="rounded-xl p-3.5 mb-2"
+        style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)" }}
+      >
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <DollarSign className="h-3 w-3 text-primary" />
+          <span className="text-[10px] font-medium text-muted uppercase tracking-wider">Revenue Today</span>
+        </div>
+        <p className="font-heading text-2xl font-bold tabular-nums text-foreground leading-none">
+          {fmt(today)}
+        </p>
       </div>
 
-      <div className="flex flex-1 flex-col justify-between gap-1">
-        {rows.map((row) => (
+      {/* ── Revenue grid ── */}
+      <div data-card className="grid grid-cols-3 gap-1.5 mb-2">
+        {[
+          { label: "Week", value: week },
+          { label: "Month", value: month },
+          { label: "Total", value: total },
+        ].map((row) => (
           <div
-            key={row.key}
-            data-row
-            className="relative rounded-lg border-l-2 border-primary/40 py-3 pl-4 transition-colors hover:bg-surface/50"
+            key={row.label}
+            className="rounded-lg bg-surface/50 px-2.5 py-2 text-center"
           >
-            <p className="font-heading text-xl font-bold tabular-nums text-foreground">
-              {formatCurrency(values[row.key])}
+            <p className="font-heading text-xs font-bold tabular-nums text-foreground leading-none">
+              {fmt(row.value)}
             </p>
-            <p className="text-[11px] text-muted">{row.label}</p>
+            <p className="mt-1 text-[9px] text-muted">{row.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Pending Payout ── */}
+      <div
+        data-card
+        className="rounded-xl p-3.5 mb-2"
+        style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%)" }}
+      >
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Clock className="h-3 w-3 text-warning" />
+          <span className="text-[10px] font-medium text-muted uppercase tracking-wider">
+            {pendingCount} Pending Payout{pendingCount !== 1 ? "s" : ""}
+          </span>
+        </div>
+        <p className="font-heading text-lg font-bold tabular-nums text-foreground leading-none">
+          {fmtFull(pendingPayout)}
+        </p>
+      </div>
+
+      {/* ── Success rate + Methods ── */}
+      <div data-card className="grid grid-cols-2 gap-1.5 mt-auto">
+        {/* Success */}
+        <div className="rounded-xl bg-surface/40 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <CheckCircle2 className="h-3 w-3 text-success" />
+            <span className="text-[9px] font-medium text-muted uppercase tracking-wider">Success</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MiniDonut percentage={successRate} size={28} />
+            <p className="font-heading text-base font-bold tabular-nums text-foreground leading-none">
+              {successRate}%
+            </p>
+          </div>
+        </div>
+
+        {/* Methods */}
+        <div className="rounded-xl bg-surface/40 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <TrendingUp className="h-3 w-3 text-primary" />
+            <span className="text-[9px] font-medium text-muted uppercase tracking-wider">Methods</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            {paymentMethods.map((m) => {
+              const color = CRYPTO_COLORS[m.currency] ?? "#737373";
+              const icon = CRYPTO_ICONS[m.currency] ?? m.currency.slice(0, 1);
+              return (
+                <div key={m.currency} className="flex items-center gap-1.5">
+                  <div
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                    style={{ backgroundColor: color }}
+                  >
+                    <span className="text-[5px] font-bold text-white leading-none">{icon}</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-foreground-secondary">{m.currency}</span>
+                  <span className="text-[10px] text-muted tabular-nums ml-auto">{m.percentage}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

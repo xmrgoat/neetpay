@@ -14,12 +14,16 @@ import {
   BarChart3,
   Code,
   Settings,
+  HelpCircle,
+  ChevronRight,
   ChevronLeft,
   Menu,
   X,
+  BadgeCheck,
+  LogOut,
 } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
@@ -34,7 +38,6 @@ const MAIN_NAV = [
 
 const OTHER_NAV = [
   { label: "Developers", icon: Code, href: "/dashboard/developers" },
-  { label: "Settings", icon: Settings, href: "/dashboard/settings" },
 ] as const;
 
 function getStoredCollapsed(): boolean {
@@ -48,6 +51,7 @@ function getStoredCollapsed(): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -187,46 +191,87 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div className="mt-auto shrink-0 border-t border-border p-3">
+        {/* Settings */}
+        <Link
+          href="/dashboard/settings"
+          className={cn(
+            "relative flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
+            collapsed ? "justify-center" : "px-3 gap-3",
+            isActive("/dashboard/settings") && "bg-primary-muted text-primary font-medium",
+          )}
+        >
+          {isActive("/dashboard/settings") && (
+            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
+          )}
+          <Settings className="h-[18px] w-[18px] shrink-0" />
+          <span className={cn(
+            "truncate text-sm transition-[opacity,width] duration-200",
+            collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
+          )}>
+            Settings
+          </span>
+        </Link>
+
+        {/* Support */}
+        <Link
+          href="/dashboard/support"
+          className={cn(
+            "relative flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
+            collapsed ? "justify-center" : "px-3 gap-3",
+            isActive("/dashboard/support") && "bg-primary-muted text-primary font-medium",
+          )}
+        >
+          {isActive("/dashboard/support") && (
+            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
+          )}
+          <HelpCircle className="h-[18px] w-[18px] shrink-0" />
+          <span className={cn(
+            "truncate text-sm transition-[opacity,width] duration-200",
+            collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
+          )}>
+            Support
+          </span>
+        </Link>
+
+        {/* Divider */}
+        <div className="my-2 h-px bg-border" />
+
+        {/* User profile */}
         <div
           className={cn(
-            "flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
-            collapsed ? "justify-center" : "px-3 gap-3",
+            "flex items-center rounded-lg transition-colors duration-150",
+            collapsed ? "justify-center p-1.5" : "gap-3 px-3 py-2",
           )}
         >
-          <ThemeToggle />
-          <span
-            className={cn(
-              "truncate text-sm transition-[opacity,width] duration-200",
-              collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
-            )}
-          >
-            Theme
-          </span>
-        </div>
+          {/* Avatar */}
+          <div className="relative shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-white text-xs font-bold uppercase">
+              {session?.user?.name?.charAt(0) ?? "U"}
+            </div>
+            <BadgeCheck className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 text-primary fill-background" />
+          </div>
 
-        <button
-          onClick={toggleCollapsed}
-          className={cn(
-            "flex h-9 w-full items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
-            collapsed ? "justify-center" : "px-3 gap-3",
-          )}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <ChevronLeft
-            className={cn(
-              "h-[18px] w-[18px] shrink-0 transition-transform duration-300",
-              collapsed && "rotate-180",
-            )}
-          />
-          <span
-            className={cn(
-              "truncate text-sm transition-[opacity,width] duration-200",
-              collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
-            )}
-          >
-            Collapse
-          </span>
-        </button>
+          {/* Name + email */}
+          <div className={cn(
+            "min-w-0 flex-1 transition-[opacity,width] duration-200",
+            collapsed ? "w-0 opacity-0 pointer-events-none hidden" : "w-auto opacity-100",
+          )}>
+            <div className="flex items-center gap-1">
+              <p className="truncate text-sm font-medium text-foreground leading-tight">
+                {session?.user?.name ?? "User"}
+              </p>
+            </div>
+            <p className="truncate text-[11px] text-muted leading-tight">
+              {session?.user?.email ?? ""}
+            </p>
+          </div>
+
+          {/* Chevron */}
+          <ChevronRight className={cn(
+            "h-3.5 w-3.5 shrink-0 text-muted transition-[opacity,width] duration-200",
+            collapsed ? "w-0 opacity-0 pointer-events-none hidden" : "w-auto opacity-100",
+          )} />
+        </div>
       </div>
     </>
   );
@@ -339,9 +384,51 @@ export function Sidebar() {
         </nav>
 
         <div className="mt-auto shrink-0 border-t border-border p-3">
-          <div className="flex h-9 items-center gap-3 rounded-lg px-3 text-foreground-secondary">
-            <ThemeToggle />
-            <span className="text-sm">Theme</span>
+          <Link
+            href="/dashboard/settings"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
+              isActive("/dashboard/settings")
+                ? "bg-primary-muted text-primary font-medium"
+                : "text-foreground-secondary hover:text-foreground hover:bg-surface",
+            )}
+          >
+            <Settings className="h-[18px] w-[18px] shrink-0" />
+            <span className="truncate">Settings</span>
+          </Link>
+          <Link
+            href="/dashboard/support"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
+              isActive("/dashboard/support")
+                ? "bg-primary-muted text-primary font-medium"
+                : "text-foreground-secondary hover:text-foreground hover:bg-surface",
+            )}
+          >
+            <HelpCircle className="h-[18px] w-[18px] shrink-0" />
+            <span className="truncate">Support</span>
+          </Link>
+
+          <div className="my-2 h-px bg-border" />
+
+          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+            <div className="relative shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-white text-xs font-bold uppercase">
+                {session?.user?.name?.charAt(0) ?? "U"}
+              </div>
+              <BadgeCheck className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 text-primary fill-background" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground leading-tight">
+                {session?.user?.name ?? "User"}
+              </p>
+              <p className="truncate text-[11px] text-muted leading-tight">
+                {session?.user?.email ?? ""}
+              </p>
+            </div>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
           </div>
         </div>
       </aside>

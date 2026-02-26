@@ -9,6 +9,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider
         attribute="class"
         defaultTheme="dark"
+        themes={["dark", "light", "midnight", "ember", "ocean", "emerald", "rose"]}
         enableSystem
         disableTransitionOnChange
       >

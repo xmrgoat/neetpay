@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
 export default async function DashboardLayout({
   children,
@@ -18,8 +19,8 @@ export default async function DashboardLayout({
       <main className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
         <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm lg:px-6">
-          <div>
-            <p className="text-sm font-medium text-foreground">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
               Welcome back{session.user.name ? `, ${session.user.name}` : ""}
             </p>
             <p className="text-xs text-muted">
@@ -30,6 +31,7 @@ export default async function DashboardLayout({
               })}
             </p>
           </div>
+          <DashboardHeader userName={session.user.name} />
         </header>
 
         {/* Page content — fills remaining height, children handle their own scroll */}
