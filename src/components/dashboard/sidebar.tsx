@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
@@ -155,15 +156,13 @@ export function Sidebar() {
       <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
         <Link
           href="/dashboard"
-          className="flex items-center font-heading text-xl font-bold tracking-tight"
+          className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight"
         >
+          <Image src="/image/logo1.png" alt="neetpay" width={26} height={26} className="shrink-0" />
           {collapsed ? (
-            <span>
-              <span className="text-foreground">n</span>
-              <span className="text-primary">p</span>
-            </span>
+            <span className={cn("transition-[opacity,width] duration-200 w-0 opacity-0 pointer-events-none")} />
           ) : (
-            <span>
+            <span className="transition-[opacity,width] duration-200">
               <span className="text-foreground">neet</span>
               <span className="text-primary">pay</span>
             </span>
@@ -339,11 +338,14 @@ export function Sidebar() {
         <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
           <Link
             href="/dashboard"
-            className="flex items-center font-heading text-xl font-bold tracking-tight"
+            className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight"
             onClick={() => setMobileOpen(false)}
           >
-            <span className="text-foreground">neet</span>
-            <span className="text-primary">pay</span>
+            <Image src="/image/logo1.png" alt="neetpay" width={26} height={26} className="shrink-0" />
+            <span>
+              <span className="text-foreground">neet</span>
+              <span className="text-primary">pay</span>
+            </span>
           </Link>
         </div>
 

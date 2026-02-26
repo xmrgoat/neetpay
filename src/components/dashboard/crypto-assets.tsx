@@ -26,19 +26,22 @@ interface CryptoAssetsProps {
 const CRYPTO_NAMES: Record<string, string> = {
   BTC: "Bitcoin", ETH: "Ethereum", SOL: "Solana", XMR: "Monero",
   USDT: "Tether", USDC: "USD Coin", TRX: "Tron", BNB: "BNB",
-  LTC: "Litecoin", DOGE: "Dogecoin", TON: "Toncoin", XRP: "Ripple", MATIC: "Polygon",
+  LTC: "Litecoin", DOGE: "Dogecoin", TON: "Toncoin", XRP: "Ripple",
+  AVAX: "Avalanche", ARB: "Arbitrum", OP: "Optimism", MATIC: "Polygon",
 };
 
 const CRYPTO_PAIRS: Record<string, string> = {
   BTC: "BTC/USDT", ETH: "ETH/USDT", SOL: "SOL/USDT", XMR: "XMR/USDT",
   USDT: "USDT/USD", USDC: "USDC/USD", TRX: "TRX/USDT", BNB: "BNB/USDT",
   LTC: "LTC/USDT", DOGE: "DOGE/USDT", TON: "TON/USDT", XRP: "XRP/USDT",
+  AVAX: "AVAX/USDT", ARB: "ARB/USDT", OP: "OP/USDT", MATIC: "MATIC/USDT",
 };
 
 const CRYPTO_ICONS: Record<string, string> = {
   BTC: "₿", ETH: "Ξ", SOL: "◎", XMR: "ɱ",
   USDT: "₮", USDC: "$", TRX: "◈", BNB: "◆",
-  LTC: "Ł", DOGE: "Ð", TON: "◇", XRP: "✕", MATIC: "⬡",
+  LTC: "Ł", DOGE: "Ð", TON: "◇", XRP: "✕",
+  AVAX: "▲", ARB: "◬", OP: "⬡", MATIC: "◈",
 };
 
 type SortMode = "value" | "name" | "change" | "default";

@@ -5,20 +5,36 @@ import { db } from "@/lib/db";
  */
 export async function getOverviewStats(userId: string) {
   const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
   const [
     totalRevenue,
+    todayRevenue,
+    weekRevenue,
     monthRevenue,
     lastMonthRevenue,
     monthPayments,
     lastMonthPayments,
     totalPayments,
     paidPayments,
+    pendingPayments,
+    pendingAmount,
+    topCurrencies,
   ] = await Promise.all([
     db.payment.aggregate({
       where: { userId, status: "paid" },
+      _sum: { amount: true },
+    }),
+    db.payment.aggregate({
+      where: { userId, status: "paid", createdAt: { gte: startOfToday } },
+      _sum: { amount: true },
+    }),
+    db.payment.aggregate({
+      where: { userId, status: "paid", createdAt: { gte: startOfWeek } },
       _sum: { amount: true },
     }),
     db.payment.aggregate({
@@ -41,9 +57,23 @@ export async function getOverviewStats(userId: string) {
     }),
     db.payment.count({ where: { userId } }),
     db.payment.count({ where: { userId, status: "paid" } }),
+    db.payment.count({ where: { userId, status: { in: ["pending", "confirming"] } } }),
+    db.payment.aggregate({
+      where: { userId, status: { in: ["pending", "confirming"] } },
+      _sum: { amount: true },
+    }),
+    db.payment.groupBy({
+      by: ["payCurrency"],
+      where: { userId, status: "paid", payCurrency: { not: null } },
+      _sum: { amount: true },
+      orderBy: { _sum: { amount: "desc" } },
+      take: 5,
+    }),
   ]);
 
   const totalRev = totalRevenue._sum.amount || 0;
+  const todayRev = todayRevenue._sum.amount || 0;
+  const weekRev = weekRevenue._sum.amount || 0;
   const monthRev = monthRevenue._sum.amount || 0;
   const lastMonthRev = lastMonthRevenue._sum.amount || 0;
   const revenueChange = lastMonthRev > 0
@@ -55,17 +85,41 @@ export async function getOverviewStats(userId: string) {
     : monthPayments > 0 ? 100 : 0;
 
   const conversionRate = totalPayments > 0
-    ? Math.round((paidPayments / totalPayments) * 100)
+    ? Math.round((paidPayments / totalPayments) * 1000) / 10
     : 0;
+
+  const avgPayment = paidPayments > 0 ? Math.round(totalRev / paidPayments) : 0;
+
+  // Compute avg payment change (this month vs last month)
+  const monthPaid = monthPayments > 0 ? monthRev / monthPayments : 0;
+  const lastMonthPaid = lastMonthPayments > 0 ? lastMonthRev / lastMonthPayments : 0;
+  const avgChange = lastMonthPaid > 0
+    ? Math.round(((monthPaid - lastMonthPaid) / lastMonthPaid) * 100)
+    : monthPaid > 0 ? 100 : 0;
+
+  // Payment method breakdown as percentages
+  const paymentMethods = totalRev > 0
+    ? topCurrencies.map((c) => ({
+        currency: c.payCurrency!,
+        percentage: Math.round(((c._sum.amount || 0) / totalRev) * 1000) / 10,
+      }))
+    : [];
 
   return {
     totalRevenue: totalRev,
+    todayRevenue: todayRev,
+    weekRevenue: weekRev,
     monthRevenue: monthRev,
     revenueChange,
     paymentCount: totalPayments,
     monthPayments,
     paymentChange,
     conversionRate,
+    avgPayment,
+    avgChange,
+    pendingCount: pendingPayments,
+    pendingPayout: pendingAmount._sum.amount || 0,
+    paymentMethods,
   };
 }
 

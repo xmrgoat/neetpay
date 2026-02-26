@@ -1,71 +1,86 @@
 import { db } from "@/lib/db";
 
-const COINGECKO_IDS: Record<string, string> = {
-  BTC: "bitcoin",
-  ETH: "ethereum",
-  SOL: "solana",
-  XMR: "monero",
-  TRX: "tron",
-  BNB: "binancecoin",
-  MATIC: "matic-network",
-};
+// ─── Alchemy Prices API ─────────────────────────────────────────────────────
+
+const ALCHEMY_PRICES_BASE = "https://api.g.alchemy.com/prices/v1";
+
+function getAlchemyKey(): string {
+  const key = process.env.ALCHEMY_API_KEY;
+  if (!key) throw new Error("ALCHEMY_API_KEY is not configured");
+  return key;
+}
+
+/** Symbols to fetch prices for (Alchemy supports these via by-symbol endpoint). */
+const PRICE_SYMBOLS = [
+  "BTC", "ETH", "SOL", "XMR", "TRX", "BNB", "MATIC",
+  "LTC", "DOGE", "XRP", "TON", "AVAX", "ARB", "OP",
+];
 
 const STABLECOINS = ["USDT", "USDC", "DAI"];
 
-const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
-
-interface CoinGeckoPrice {
-  usd: number;
-  usd_24h_change?: number;
+interface AlchemyPriceEntry {
+  symbol: string;
+  prices: Array<{ currency: string; value: string; lastUpdatedAt: string }>;
+  error: string | null;
 }
 
-type CoinGeckoResponse = Record<string, CoinGeckoPrice>;
+interface AlchemyPricesResponse {
+  data: AlchemyPriceEntry[];
+}
 
 /**
- * Fetch current USD prices + 24h change from CoinGecko free API.
- * Returns null if rate-limited.
+ * Fetch current USD prices from Alchemy Prices API.
+ * Returns null if the request fails entirely.
  */
 export async function fetchPrices(): Promise<
   Record<string, { usdPrice: number; change24h: number | null }> | null
 > {
-  const ids = Object.values(COINGECKO_IDS).join(",");
-  const url = `${COINGECKO_BASE}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+  const symbols = PRICE_SYMBOLS.join(",");
+  const url = `${ALCHEMY_PRICES_BASE}/${getAlchemyKey()}/tokens/by-symbol?symbols=${symbols}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
   });
 
   if (res.status === 429) {
-    console.warn("[price] CoinGecko rate limit hit, skipping update");
+    console.warn("[price] Alchemy rate limit hit, skipping update");
     return null;
   }
 
   if (!res.ok) {
-    throw new Error(`CoinGecko API error: ${res.status} ${res.statusText}`);
+    throw new Error(`Alchemy Prices API error: ${res.status} ${res.statusText}`);
   }
 
-  const data: CoinGeckoResponse = await res.json();
+  const json: AlchemyPricesResponse = await res.json();
 
-  const idToSymbol = Object.entries(COINGECKO_IDS).reduce(
-    (acc, [symbol, id]) => {
-      acc[id] = symbol;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
+  // Load previous prices from cache to compute 24h change
+  const previousPrices = await getAllPrices();
 
   const prices: Record<string, { usdPrice: number; change24h: number | null }> = {};
 
-  for (const [cgId, priceData] of Object.entries(data)) {
-    const symbol = idToSymbol[cgId];
-    if (symbol) {
-      prices[symbol] = {
-        usdPrice: priceData.usd,
-        change24h: priceData.usd_24h_change ?? null,
-      };
+  for (const entry of json.data) {
+    if (entry.error) continue;
+    const usdEntry = entry.prices.find((p) => p.currency === "usd");
+    if (!usdEntry) continue;
+
+    const usdPrice = parseFloat(usdEntry.value);
+    const prev = previousPrices[entry.symbol];
+
+    // Compute 24h change from cached price delta
+    let change24h: number | null = null;
+    if (prev && prev.usdPrice > 0) {
+      change24h = ((usdPrice - prev.usdPrice) / prev.usdPrice) * 100;
+      // If the cached change is already set and the price hasn't changed much,
+      // carry forward the existing change value (it gets more accurate over time)
+      if (prev.change24h !== null && Math.abs(usdPrice - prev.usdPrice) / prev.usdPrice < 0.001) {
+        change24h = prev.change24h;
+      }
     }
+
+    prices[entry.symbol] = { usdPrice, change24h };
   }
 
+  // Stablecoins hardcoded
   for (const stable of STABLECOINS) {
     prices[stable] = { usdPrice: 1, change24h: 0 };
   }
@@ -74,7 +89,7 @@ export async function fetchPrices(): Promise<
 }
 
 /**
- * Fetch prices from CoinGecko and upsert into PriceCache table.
+ * Fetch prices from Alchemy and upsert into PriceCache table.
  */
 export async function updatePriceCache(): Promise<number> {
   const prices = await fetchPrices();
@@ -89,7 +104,7 @@ export async function updatePriceCache(): Promise<number> {
   );
 
   const results = await db.$transaction(upserts);
-  console.log(`[price] Updated ${results.length} prices`);
+  console.log(`[price] Updated ${results.length} prices via Alchemy`);
   return results.length;
 }
 

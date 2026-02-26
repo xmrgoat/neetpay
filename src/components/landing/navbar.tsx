@@ -6,6 +6,7 @@ import { useGSAP } from "@gsap/react";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 import Link from "next/link";
 
 export function Navbar() {
@@ -65,10 +66,13 @@ export function Navbar() {
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-0 font-heading text-xl font-bold tracking-tight"
+            className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight"
           >
-            <span className="text-white">neet</span>
-            <span className="text-primary">pay</span>
+            <Image src="/image/logo1.png" alt="neetpay" width={28} height={28} className="shrink-0" />
+            <span>
+              <span className="text-white">neet</span>
+              <span className="text-primary">pay</span>
+            </span>
           </Link>
 
           {/* Desktop nav — pill style links */}

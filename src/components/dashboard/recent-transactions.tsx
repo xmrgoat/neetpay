@@ -28,6 +28,7 @@ const CRYPTO_ICONS: Record<string, string> = {
   BTC: "₿", ETH: "Ξ", SOL: "◎", XMR: "ɱ",
   USDT: "₮", USDC: "$", TRX: "◈", BNB: "◆",
   LTC: "Ł", DOGE: "Ð", TON: "◇", XRP: "✕",
+  AVAX: "▲", ARB: "◬", OP: "⬡", MATIC: "◈",
 };
 
 const STATUS_LABEL: Record<PaymentStatus, string> = {

@@ -29,12 +29,14 @@ export const CRYPTO_NAMES: Record<string, string> = {
   BTC: "Bitcoin", ETH: "Ethereum", SOL: "Solana", XMR: "Monero",
   USDT: "Tether", USDC: "USD Coin", TRX: "Tron", BNB: "BNB",
   LTC: "Litecoin", DOGE: "Dogecoin", TON: "Toncoin", XRP: "Ripple",
+  AVAX: "Avalanche", ARB: "Arbitrum", OP: "Optimism", MATIC: "Polygon",
 };
 
 export const CRYPTO_ICONS: Record<string, string> = {
   BTC: "₿", ETH: "Ξ", SOL: "◎", XMR: "ɱ",
   USDT: "₮", USDC: "$", TRX: "◈", BNB: "◆",
   LTC: "Ł", DOGE: "Ð", TON: "◇", XRP: "✕",
+  AVAX: "▲", ARB: "◬", OP: "⬡", MATIC: "◈",
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

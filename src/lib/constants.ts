@@ -96,6 +96,13 @@ export const CRYPTO_COLORS: Record<string, string> = {
   USDT: "#26A17B",
   USDC: "#2775CA",
   MATIC: "#8247E5",
+  LTC: "#BFBBBB",
+  DOGE: "#C2A633",
+  XRP: "#23292F",
+  TON: "#0098EA",
+  AVAX: "#E84142",
+  ARB: "#28A0F0",
+  OP: "#FF0420",
 };
 
 export const SUPPORTED_CRYPTOS = [
@@ -111,4 +118,7 @@ export const SUPPORTED_CRYPTOS = [
   { symbol: "DOGE", name: "Dogecoin" },
   { symbol: "TON", name: "Toncoin" },
   { symbol: "XRP", name: "Ripple" },
+  { symbol: "AVAX", name: "Avalanche" },
+  { symbol: "ARB", name: "Arbitrum" },
+  { symbol: "OP", name: "Optimism" },
 ] as const;
