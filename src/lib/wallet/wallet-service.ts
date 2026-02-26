@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getChainEntry } from "@/lib/chains/registry";
+import { getChainEntry, CHAIN_REGISTRY } from "@/lib/chains/registry";
 
 export interface WalletBalanceWithPrice {
   currency: string;
@@ -10,21 +10,27 @@ export interface WalletBalanceWithPrice {
   usdValue: number | null;
 }
 
+export interface EnrichedTransaction {
+  id: string;
+  type: string;
+  currency: string;
+  currencyKey: string;
+  symbol: string;
+  chain: string;
+  amount: number;
+  valueUsd: number;
+  fee: number | null;
+  txHash: string | null;
+  address: string | null;
+  explorerUrl: string | null;
+  confirmations: number;
+  requiredConfs: number;
+  status: string;
+  createdAt: string;
+}
+
 export interface TransactionHistoryResult {
-  transactions: Array<{
-    id: string;
-    type: string;
-    currency: string;
-    chain: string;
-    amount: number;
-    fee: number | null;
-    txHash: string | null;
-    toAddress: string | null;
-    fromAddress: string | null;
-    paymentId: string | null;
-    status: string;
-    createdAt: Date;
-  }>;
+  transactions: EnrichedTransaction[];
   total: number;
 }
 
@@ -111,9 +117,9 @@ export async function getDepositAddress(
     throw new Error(`Unsupported currency/chain: ${currency}/${chain}`);
   }
 
-  // Reuse existing unlinked address
+  // Reuse existing address owned by this user (not linked to a payment)
   const existing = await db.walletAddress.findFirst({
-    where: { chain, paymentId: null },
+    where: { userId, chain, paymentId: null },
     orderBy: { createdAt: "desc" },
   });
 
@@ -121,7 +127,7 @@ export async function getDepositAddress(
     return { address: existing.address };
   }
 
-  // Generate new address
+  // Generate new address — use global derivation index to avoid collisions
   const lastAddress = await db.walletAddress.findFirst({
     where: { chain },
     orderBy: { derivationIndex: "desc" },
@@ -131,7 +137,7 @@ export async function getDepositAddress(
   const { address } = await entry.provider.generateAddress(derivationIndex);
 
   await db.walletAddress.create({
-    data: { chain, address, derivationIndex },
+    data: { userId, chain, address, derivationIndex },
   });
 
   return { address };
@@ -172,18 +178,22 @@ export async function withdraw(
     throw new Error(`Send not supported for ${chain}`);
   }
 
-  // Find derivation index
-  const walletAddr = await db.walletAddress.findFirst({
-    where: { chain },
-    orderBy: { derivationIndex: "desc" },
+  // Find all wallet addresses belonging to this user on this chain
+  const userAddresses = await db.walletAddress.findMany({
+    where: { userId, chain },
+    orderBy: { derivationIndex: "asc" },
   });
 
-  if (!walletAddr) {
-    throw new Error(`No wallet address found for chain: ${chain}`);
+  if (userAddresses.length === 0) {
+    throw new Error(`No wallet address found for user on chain: ${chain}`);
   }
 
+  // Send from the first (primary) address — for account-model chains (EVM, SOL, TRX)
+  // this is the only address needed. For UTXO chains the provider handles UTXO aggregation.
+  const primaryAddr = userAddresses[0];
+
   const result = await entry.provider.send({
-    fromIndex: walletAddr.derivationIndex,
+    fromIndex: primaryAddr.derivationIndex,
     toAddress,
     amount,
     tokenContract: entry.tokenContract,
@@ -211,7 +221,8 @@ export async function withdraw(
 }
 
 /**
- * Get paginated transaction history.
+ * Get paginated transaction history, enriched with computed fields
+ * (symbol, explorerUrl, valueUsd) that the frontend expects.
  */
 export async function getTransactionHistory(
   userId: string,
@@ -224,7 +235,7 @@ export async function getTransactionHistory(
   const where: Record<string, unknown> = { userId };
   if (opts?.type) where.type = opts.type;
 
-  const [transactions, total] = await Promise.all([
+  const [rawTxs, total] = await Promise.all([
     db.walletTransaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -233,6 +244,40 @@ export async function getTransactionHistory(
     }),
     db.walletTransaction.count({ where }),
   ]);
+
+  // Fetch prices for all currencies in this batch
+  const symbols = [...new Set(rawTxs.map((tx) => tx.currency))];
+  const prices = await db.priceCache.findMany({
+    where: { symbol: { in: symbols } },
+  });
+  const priceMap = new Map(prices.map((p) => [p.symbol, p.usdPrice]));
+
+  const transactions: EnrichedTransaction[] = rawTxs.map((tx) => {
+    const currencyKey = buildCurrencyKey(tx.currency, tx.chain);
+    const registryEntry = CHAIN_REGISTRY[currencyKey];
+    const usdPrice = priceMap.get(tx.currency) ?? 0;
+
+    return {
+      id: tx.id,
+      type: tx.type,
+      currency: tx.currency,
+      currencyKey,
+      symbol: registryEntry?.symbol ?? tx.currency,
+      chain: tx.chain,
+      amount: tx.amount,
+      valueUsd: tx.amount * usdPrice,
+      fee: tx.fee,
+      txHash: tx.txHash,
+      address: tx.type === "withdrawal" ? tx.toAddress : tx.fromAddress,
+      explorerUrl: tx.txHash && registryEntry
+        ? registryEntry.provider.getExplorerUrl(tx.txHash)
+        : null,
+      confirmations: tx.status === "confirmed" ? (registryEntry?.provider.getRequiredConfirmations() ?? 1) : 0,
+      requiredConfs: registryEntry?.provider.getRequiredConfirmations() ?? 1,
+      status: tx.status,
+      createdAt: tx.createdAt.toISOString(),
+    };
+  });
 
   return { transactions, total };
 }
@@ -249,6 +294,11 @@ function buildCurrencyKey(currency: string, chain: string): string {
     TRX: "tron",
     BNB: "bsc",
     MATIC: "polygon",
+    ARB: "arbitrum",
+    OP: "optimism",
+    AVAX: "avalanche",
+    LTC: "litecoin",
+    DOGE: "dogecoin",
   };
 
   if (nativeMap[currency] === chain) {
@@ -261,6 +311,9 @@ function buildCurrencyKey(currency: string, chain: string): string {
     bsc: "BSC",
     solana: "SOL",
     tron: "TRC20",
+    arbitrum: "ARB",
+    optimism: "OP",
+    avalanche: "AVAX",
   };
 
   const suffix = chainSuffix[chain] || "";

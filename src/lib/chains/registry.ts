@@ -3,6 +3,7 @@ import { createSolanaProvider } from "./solana-provider";
 import { createBitcoinProvider } from "./bitcoin-provider";
 import { createTronProvider, USDT_TRC20 } from "./tron-provider";
 import { createMoneroProvider } from "./monero-provider";
+import { createBlockCypherProvider } from "./blockcypher-provider";
 import type { ChainRegistryEntry } from "./types";
 
 // ERC-20 token contracts (Ethereum mainnet)
@@ -29,10 +30,13 @@ let evmBsc: ReturnType<typeof createEvmProvider>;
 let evmArbitrum: ReturnType<typeof createEvmProvider>;
 let evmBase: ReturnType<typeof createEvmProvider>;
 let evmOptimism: ReturnType<typeof createEvmProvider>;
+let evmAvalanche: ReturnType<typeof createEvmProvider>;
 let solana: ReturnType<typeof createSolanaProvider>;
 let btc: ReturnType<typeof createBitcoinProvider>;
 let tron: ReturnType<typeof createTronProvider>;
 let monero: ReturnType<typeof createMoneroProvider>;
+let ltc: ReturnType<typeof createBlockCypherProvider>;
+let doge: ReturnType<typeof createBlockCypherProvider>;
 
 function getEvmEthereum() {
   if (!evmEthereum) evmEthereum = createEvmProvider("ethereum");
@@ -58,6 +62,10 @@ function getEvmOptimism() {
   if (!evmOptimism) evmOptimism = createEvmProvider("optimism");
   return evmOptimism;
 }
+function getEvmAvalanche() {
+  if (!evmAvalanche) evmAvalanche = createEvmProvider("avalanche");
+  return evmAvalanche;
+}
 function getSolana() {
   if (!solana) solana = createSolanaProvider();
   return solana;
@@ -73,6 +81,14 @@ function getTron() {
 function getMonero() {
   if (!monero) monero = createMoneroProvider();
   return monero;
+}
+function getLtc() {
+  if (!ltc) ltc = createBlockCypherProvider("litecoin");
+  return ltc;
+}
+function getDoge() {
+  if (!doge) doge = createBlockCypherProvider("dogecoin");
+  return doge;
 }
 
 /**
@@ -136,6 +152,46 @@ export const CHAIN_REGISTRY: Record<string, ChainRegistryEntry> = {
     native: true,
     network: "mainnet",
     get provider() { return getEvmPolygon(); },
+  },
+  ARB: {
+    chain: "arbitrum",
+    name: "Arbitrum",
+    symbol: "ARB",
+    native: true,
+    network: "mainnet",
+    get provider() { return getEvmArbitrum(); },
+  },
+  OP: {
+    chain: "optimism",
+    name: "Optimism",
+    symbol: "OP",
+    native: true,
+    network: "mainnet",
+    get provider() { return getEvmOptimism(); },
+  },
+  AVAX: {
+    chain: "avalanche",
+    name: "Avalanche",
+    symbol: "AVAX",
+    native: true,
+    network: "mainnet",
+    get provider() { return getEvmAvalanche(); },
+  },
+  LTC: {
+    chain: "litecoin",
+    name: "Litecoin",
+    symbol: "LTC",
+    native: true,
+    network: "mainnet",
+    get provider() { return getLtc(); },
+  },
+  DOGE: {
+    chain: "dogecoin",
+    name: "Dogecoin",
+    symbol: "DOGE",
+    native: true,
+    network: "mainnet",
+    get provider() { return getDoge(); },
   },
 
   // USDT on multiple chains

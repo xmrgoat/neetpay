@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { DollarSign, Clock, CheckCircle2, TrendingUp } from "lucide-react";
 import { CRYPTO_COLORS } from "@/lib/constants";
+import { CryptoIcon } from "@/components/icons/crypto-icons";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -180,14 +181,13 @@ export function RevenueSummary({
           <div className="flex flex-col gap-1">
             {paymentMethods.map((m) => {
               const color = CRYPTO_COLORS[m.currency] ?? "#737373";
-              const icon = CRYPTO_ICONS[m.currency] ?? m.currency.slice(0, 1);
               return (
                 <div key={m.currency} className="flex items-center gap-1.5">
                   <div
                     className="flex h-3.5 w-3.5 items-center justify-center rounded-full"
                     style={{ backgroundColor: color }}
                   >
-                    <span className="text-[5px] font-bold text-white leading-none">{icon}</span>
+                    <CryptoIcon symbol={m.currency} size={14} />
                   </div>
                   <span className="text-[10px] font-medium text-foreground-secondary">{m.currency}</span>
                   <span className="text-[10px] text-muted tabular-nums ml-auto">{m.percentage}%</span>

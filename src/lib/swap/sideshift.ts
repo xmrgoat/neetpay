@@ -55,8 +55,6 @@ const SIDESHIFT_MAP: Record<string, { coin: string; network: string }> = {
   MATIC:        { coin: "pol",   network: "polygon" },
   LTC:          { coin: "ltc",   network: "litecoin" },
   DOGE:         { coin: "doge",  network: "dogecoin" },
-  XRP:          { coin: "xrp",   network: "ripple" },
-  TON:          { coin: "ton",   network: "ton" },
   AVAX:         { coin: "avax",  network: "avax" },
   ARB:          { coin: "arb",   network: "arbitrum" },
   OP:           { coin: "op",    network: "optimism" },

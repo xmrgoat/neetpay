@@ -18,6 +18,7 @@ import {
   arbitrum,
   base,
   optimism,
+  avalanche,
 } from "viem/chains";
 import { deriveEvmAddress } from "@/lib/wallet/hd-wallet";
 import type { ChainProvider, PaymentCheck, GeneratedAddress } from "./types";
@@ -63,6 +64,12 @@ const CHAIN_CONFIG: Record<
     alchemyNetwork: "opt-mainnet",
     confirmations: 12,
     explorer: "https://optimistic.etherscan.io/tx",
+  },
+  avalanche: {
+    chain: avalanche,
+    alchemyNetwork: "avax-mainnet",
+    confirmations: 12,
+    explorer: "https://snowtrace.io/tx",
   },
 };
 

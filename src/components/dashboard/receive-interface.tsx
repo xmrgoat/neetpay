@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { CRYPTO_COLORS } from "@/lib/constants";
@@ -9,14 +9,14 @@ import {
   Copy,
   CheckCheck,
   AlertTriangle,
-  ArrowDownLeft,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CryptoIcon } from "@/components/icons/crypto-icons";
 import {
   CryptoSelector,
   PanelTabBar,
   CRYPTO_NAMES,
-  CRYPTO_ICONS,
   type CryptoHolding,
   type PanelType,
 } from "./crypto-selector";
@@ -34,28 +34,13 @@ const CHAIN_LABELS: Record<string, string> = {
   BNB: "BNB Smart Chain",
   LTC: "Litecoin Network",
   DOGE: "Dogecoin Network",
-  TON: "TON Network",
-  XRP: "XRP Ledger",
+  MATIC: "Polygon Network",
+  ARB: "Arbitrum Network",
+  OP: "Optimism Network",
+  AVAX: "Avalanche C-Chain",
 };
 
-// ─── Fake deposit addresses ─────────────────────────────────────────────────
-
-const FAKE_ADDRESSES: Record<string, string> = {
-  BTC: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  ETH: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-  SOL: "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV",
-  XMR: "48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzCLhjv8bVXufgMJxS",
-  USDT: "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
-  USDC: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-  TRX: "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
-  BNB: "bnb1grpf0955h0ykzq3ar5nmum7y6gdfl6lxfn46h2",
-  LTC: "ltc1qhvd6t59zjf5p7sz9d3y2sxa0ql2zchsqan4t8f",
-  DOGE: "D7Y55r6Yoc1G1gHSPx7qBMtQS7PYqH5PtN",
-  TON: "UQBvW8Z5huBkMJYdnfAEM5JqTNQXVepAvJ0DjNBUkGhZ4bIY",
-  XRP: "rN7k9gGkhdq5TnLRy4Y2PfEGDrYvT7Mpbn",
-};
-
-// ─── QR grid generator (reused from wallet-card) ────────────────────────────
+// ─── QR grid generator ──────────────────────────────────────────────────────
 
 function generateQrGrid(address: string, size: number = 15): boolean[][] {
   const cells: boolean[][] = [];
@@ -90,6 +75,9 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedCurrency, setSelectedCurrency] = useState("BTC");
   const [copied, setCopied] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useGSAP(() => {
     if (!containerRef.current) return;
@@ -110,19 +98,51 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
     );
   }, { scope: containerRef });
 
-  const address = FAKE_ADDRESSES[selectedCurrency] ?? "0x0000000000000000000000000000000000000000";
+  // ── Fetch deposit address from API ──────────────────────────────────────
+  const fetchAddress = useCallback(async (currency: string) => {
+    setLoading(true);
+    setError(null);
+    setAddress(null);
+    try {
+      const res = await fetch("/api/dashboard/wallet/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currencyKey: currency }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to get deposit address");
+      }
+      const data = await res.json();
+      setAddress(data.address);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to get address");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAddress(selectedCurrency);
+  }, [selectedCurrency, fetchAddress]);
+
   const chain = CHAIN_LABELS[selectedCurrency] ?? "Unknown Network";
   const color = CRYPTO_COLORS[selectedCurrency] ?? "#737373";
-  const icon = CRYPTO_ICONS[selectedCurrency] ?? selectedCurrency.slice(0, 1);
   const name = CRYPTO_NAMES[selectedCurrency] ?? selectedCurrency;
-  const qrGrid = generateQrGrid(address);
+  const qrGrid = address ? generateQrGrid(address) : null;
 
   async function copyAddress() {
+    if (!address) return;
     try {
       await navigator.clipboard.writeText(address);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* ignore */ }
+  }
+
+  function handleCurrencyChange(c: string) {
+    setSelectedCurrency(c);
+    setCopied(false);
   }
 
   return (
@@ -170,7 +190,7 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: color, boxShadow: `0 2px 10px ${color}40` }}
               >
-                <span className="text-sm font-bold text-white">{icon}</span>
+                <CryptoIcon symbol={selectedCurrency} size={36} />
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-foreground">{name}</p>
@@ -180,25 +200,45 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
             <CryptoSelector
               selected={selectedCurrency}
               holdings={holdings}
-              onSelect={(c) => { setSelectedCurrency(c); setCopied(false); }}
+              onSelect={handleCurrencyChange}
             />
           </div>
         </div>
 
         {/* ── QR Code ── */}
         <div data-animate className="mt-3 rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center">
-          <div className="rounded-xl bg-white p-3">
-            <svg viewBox={`0 0 ${qrGrid.length} ${qrGrid.length}`} width="160" height="160">
-              {qrGrid.map((row, r) =>
-                row.map((filled, c) =>
-                  filled ? (
-                    <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#000" />
-                  ) : null
-                )
-              )}
-            </svg>
-          </div>
-          <p className="mt-2 text-[10px] text-muted">Scan to receive {selectedCurrency}</p>
+          {loading ? (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <Loader2 className="h-6 w-6 text-muted animate-spin" />
+              <p className="text-[11px] text-muted">Generating address...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-2 py-6">
+              <AlertTriangle className="h-5 w-5 text-error" />
+              <p className="text-[11px] text-error text-center">{error}</p>
+              <button
+                onClick={() => fetchAddress(selectedCurrency)}
+                className="mt-1 text-[11px] text-primary hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          ) : qrGrid ? (
+            <>
+              <div className="rounded-xl bg-white p-3">
+                <svg viewBox={`0 0 ${qrGrid.length} ${qrGrid.length}`} width="160" height="160">
+                  {qrGrid.map((row, r) =>
+                    row.map((filled, c) =>
+                      filled ? (
+                        <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#000" />
+                      ) : null
+                    )
+                  )}
+                </svg>
+              </div>
+              <p className="mt-2 text-[10px] text-muted">Scan to receive {selectedCurrency}</p>
+            </>
+          ) : null}
         </div>
 
         {/* ── Deposit address ── */}
@@ -206,9 +246,13 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">Deposit address</span>
           </div>
-          <p className="font-mono text-[12px] text-foreground break-all select-all leading-relaxed">
-            {address}
-          </p>
+          {address ? (
+            <p className="font-mono text-[12px] text-foreground break-all select-all leading-relaxed">
+              {address}
+            </p>
+          ) : !loading && !error ? (
+            <p className="font-mono text-[12px] text-muted">—</p>
+          ) : null}
         </div>
 
         {/* ── Warning ── */}
@@ -225,13 +269,16 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
         <div data-animate className="mt-5">
           <button
             onClick={copyAddress}
+            disabled={!address}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[14px] font-semibold transition-all duration-200",
-              copied
-                ? "bg-success/20 text-success border border-success/30"
-                : "bg-primary text-white hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
+              !address
+                ? "cursor-not-allowed border border-border bg-surface text-muted"
+                : copied
+                  ? "bg-success/20 text-success border border-success/30"
+                  : "bg-primary text-white hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
             )}
-            style={!copied ? {
+            style={address && !copied ? {
               boxShadow: "0 4px 20px rgba(255,102,0,0.3), 0 0 40px rgba(255,102,0,0.08)",
             } : undefined}
           >

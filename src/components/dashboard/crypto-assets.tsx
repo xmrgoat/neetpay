@@ -10,6 +10,7 @@ import {
   Settings2, EyeOff, ArrowUpDown, BarChart3, Hash, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CryptoIcon } from "@/components/icons/crypto-icons";
 
 interface CryptoAsset {
   currency: string;
@@ -21,6 +22,7 @@ interface CryptoAsset {
 
 interface CryptoAssetsProps {
   holdings: CryptoAsset[];
+  expanded?: boolean;
 }
 
 const CRYPTO_NAMES: Record<string, string> = {
@@ -278,7 +280,6 @@ function CryptoDetailCard({ asset, onClose }: { asset: CryptoAsset; onClose: () 
   const color = CRYPTO_COLORS[asset.currency.toUpperCase()] ?? "#737373";
   const name = CRYPTO_NAMES[asset.currency.toUpperCase()] ?? asset.currency;
   const pair = CRYPTO_PAIRS[asset.currency.toUpperCase()] ?? `${asset.currency}/USD`;
-  const icon = CRYPTO_ICONS[asset.currency.toUpperCase()] ?? asset.currency.slice(0, 1);
   const change = asset.change24h ?? 0;
   const isPositive = change >= 0;
   const sparkline = generateSparkline(isPositive);
@@ -314,7 +315,7 @@ function CryptoDetailCard({ asset, onClose }: { asset: CryptoAsset; onClose: () 
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ backgroundColor: `${color}20`, border: `1px solid ${color}30` }}>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: color, boxShadow: `0 4px 12px ${color}50` }}>
-                <span className="text-sm font-bold text-white">{icon}</span>
+                <CryptoIcon symbol={asset.currency.toUpperCase()} size={36} />
               </div>
             </div>
             <div>
@@ -372,7 +373,7 @@ function CryptoDetailCard({ asset, onClose }: { asset: CryptoAsset; onClose: () 
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export function CryptoAssets({ holdings }: CryptoAssetsProps) {
+export function CryptoAssets({ holdings, expanded }: CryptoAssetsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedAsset, setSelectedAsset] = useState<CryptoAsset | null>(null);
   const [search, setSearch] = useState("");
@@ -492,9 +493,11 @@ export function CryptoAssets({ holdings }: CryptoAssetsProps) {
               )}
             </div>
 
-            <Link href="/dashboard/wallet" className="flex items-center gap-0.5 text-[11px] text-muted hover:text-foreground transition-colors">
-              All <ChevronRight size={12} />
-            </Link>
+            {!expanded && (
+              <Link href="/dashboard/wallet" className="flex items-center gap-0.5 text-[11px] text-muted hover:text-foreground transition-colors">
+                All <ChevronRight size={12} />
+              </Link>
+            )}
           </div>
         </div>
 
@@ -517,7 +520,6 @@ export function CryptoAssets({ holdings }: CryptoAssetsProps) {
           {processed.map((asset, i) => {
             const color = CRYPTO_COLORS[asset.currency.toUpperCase()] ?? "#737373";
             const name = CRYPTO_NAMES[asset.currency.toUpperCase()] ?? asset.currency;
-            const icon = CRYPTO_ICONS[asset.currency.toUpperCase()] ?? asset.currency.slice(0, 1);
             const change = asset.change24h ?? 0;
             const isPositive = change >= 0;
             const isLast = i === processed.length - 1;
@@ -549,7 +551,7 @@ export function CryptoAssets({ holdings }: CryptoAssetsProps) {
                       boxShadow: `0 2px 8px ${color}35`,
                     }}
                   >
-                    <span className={cn("font-bold text-white", settings.compactMode ? "text-[10px]" : "text-xs")}>{icon}</span>
+                    <CryptoIcon symbol={asset.currency.toUpperCase()} size={settings.compactMode ? 28 : 36} />
                   </div>
                   <div
                     className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-200 group-hover/row:opacity-100"

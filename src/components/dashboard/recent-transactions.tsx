@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowRight, X, Copy, Check } from "lucide-react";
 import { CRYPTO_COLORS } from "@/lib/constants";
 import type { PaymentStatus } from "@/lib/constants";
+import { CryptoIcon } from "@/components/icons/crypto-icons";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
         <div className="divide-y divide-border/50">
           {transactions.map((tx) => {
             const color = CRYPTO_COLORS[tx.payCurrency] ?? "#737373";
-            const icon = CRYPTO_ICONS[tx.payCurrency] ?? tx.payCurrency.slice(0, 1);
+            const _icon = tx.payCurrency;
             return (
               <div
                 key={tx.id}
@@ -239,9 +240,9 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
                 <div className="flex flex-1 items-center gap-3 min-w-0">
                   <div
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${color}20` }}
+                    style={{ backgroundColor: color }}
                   >
-                    <span className="text-[10px] font-bold leading-none" style={{ color }}>{icon}</span>
+                    <CryptoIcon symbol={tx.payCurrency} size={28} />
                   </div>
                   <span className="text-sm font-medium text-foreground tabular-nums truncate">
                     {tx.cryptoAmount} {tx.payCurrency}

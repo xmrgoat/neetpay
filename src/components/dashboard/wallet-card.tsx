@@ -299,7 +299,7 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
         >
           {/* ═══ FRONT FACE ═══ */}
           <div
-            className="group relative select-none overflow-hidden rounded-2xl px-5 py-6"
+            className="group relative select-none overflow-hidden rounded-2xl px-6 py-8"
             style={{
               background: theme.bg,
               boxShadow: "0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)",
@@ -338,8 +338,8 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
             </div>
 
             {/* Balance */}
-            <div className="relative z-10 mt-4">
-              <p className="font-heading text-[28px] font-bold leading-none text-white tabular-nums tracking-tight">
+            <div className="relative z-10 mt-6">
+              <p className="font-heading text-[32px] font-bold leading-none text-white tabular-nums tracking-tight">
                 ${formatCurrency(totalUsd)}
               </p>
               <div className="mt-1.5 flex items-center gap-2">
@@ -356,7 +356,7 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
             </div>
 
             {/* Card number (wallet address) — click to copy, with info & QR */}
-            <div className="group/addr relative z-10 mt-5">
+            <div className="group/addr relative z-10 mt-7">
               <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/10">
                 {/* Address — click to copy */}
                 <button
@@ -411,16 +411,16 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
             </div>
 
             {/* Action Buttons */}
-            <div className="relative z-10 mt-5 flex items-center gap-1.5">
-              <button onClick={onSendClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
+            <div className="relative z-10 mt-7 flex items-center gap-2">
+              <button onClick={onSendClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2.5 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
                 <ArrowUpRight className="h-3 w-3" />
                 Send
               </button>
-              <button onClick={onReceiveClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
+              <button onClick={onReceiveClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2.5 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
                 <ArrowDownLeft className="h-3 w-3" />
                 Receive
               </button>
-              <button onClick={onSwapClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
+              <button onClick={onSwapClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2.5 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
                 <ArrowLeftRight className="h-3 w-3" />
                 Swap
               </button>

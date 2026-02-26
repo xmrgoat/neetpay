@@ -13,7 +13,7 @@ function getAlchemyKey(): string {
 /** Symbols to fetch prices for (Alchemy supports these via by-symbol endpoint). */
 const PRICE_SYMBOLS = [
   "BTC", "ETH", "SOL", "XMR", "TRX", "BNB", "MATIC",
-  "LTC", "DOGE", "XRP", "TON", "AVAX", "ARB", "OP",
+  "LTC", "DOGE", "AVAX", "ARB", "OP",
 ];
 
 const STABLECOINS = ["USDT", "USDC", "DAI"];

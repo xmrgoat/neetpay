@@ -269,7 +269,8 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           quoteId: quote.quoteId,
-          settleAddress: "self", // backend resolves user's wallet address
+          settleAddress: "self",
+          toCurrency,
         }),
       });
 

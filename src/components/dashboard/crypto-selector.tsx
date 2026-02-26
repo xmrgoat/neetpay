@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CryptoIcon } from "@/components/icons/crypto-icons";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,6 @@ export function CryptoSelector({
   }, [holdings, exclude, search]);
 
   const color = CRYPTO_COLORS[selected] ?? "#737373";
-  const icon = CRYPTO_ICONS[selected] ?? selected.slice(0, 1);
   const name = CRYPTO_NAMES[selected] ?? selected;
 
   useEffect(() => {
@@ -226,7 +226,7 @@ export function CryptoSelector({
           className="flex h-8 w-8 items-center justify-center rounded-full"
           style={{ backgroundColor: color, boxShadow: `0 2px 10px ${color}40` }}
         >
-          <span className="text-xs font-bold text-white">{icon}</span>
+          <CryptoIcon symbol={selected} size={32} />
         </div>
         <div className="text-left">
           <p className="text-[13px] font-semibold text-foreground">{selected}</p>
@@ -257,7 +257,6 @@ export function CryptoSelector({
           <div className="max-h-52 overflow-y-auto no-scrollbar">
             {filtered.map((h) => {
               const c = CRYPTO_COLORS[h.currency] ?? "#737373";
-              const ic = CRYPTO_ICONS[h.currency] ?? h.currency.slice(0, 1);
               const n = CRYPTO_NAMES[h.currency] ?? h.currency;
               const isSelected = h.currency === selected;
 
@@ -274,7 +273,7 @@ export function CryptoSelector({
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
                     style={{ backgroundColor: c }}
                   >
-                    <span className="text-[10px] font-bold text-white">{ic}</span>
+                    <CryptoIcon symbol={h.currency} size={28} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] font-semibold text-foreground">{n}</p>

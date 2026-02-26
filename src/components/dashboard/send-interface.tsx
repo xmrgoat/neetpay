@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { CRYPTO_COLORS } from "@/lib/constants";
@@ -10,6 +10,9 @@ import {
   AlertCircle,
   Clipboard,
   Zap,
+  Loader2,
+  CheckCircle,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -17,7 +20,6 @@ import {
   PanelTabBar,
   AmountModeToggle,
   CRYPTO_NAMES,
-  CRYPTO_ICONS,
   formatCryptoAmount,
   formatFiat,
   FIAT_SIGN,
@@ -58,6 +60,9 @@ export function SendInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [inputInFiat, setInputInFiat] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useGSAP(() => {
     if (!containerRef.current) return;
@@ -112,6 +117,64 @@ export function SendInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
       const text = await navigator.clipboard.readText();
       setAddress(text.trim());
     } catch { /* ignore */ }
+  }
+
+  const handleSend = useCallback(async () => {
+    if (!canSend || sending) return;
+    setSending(true);
+    setSendError(null);
+    setTxHash(null);
+    try {
+      const res = await fetch("/api/dashboard/wallet/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currencyKey: selectedCurrency,
+          address: address.trim(),
+          amount: parsedAmount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Withdrawal failed");
+      setTxHash(data.txHash);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Withdrawal failed");
+    } finally {
+      setSending(false);
+    }
+  }, [canSend, sending, selectedCurrency, address, parsedAmount]);
+
+  // ── Success state ─────────────────────────────────────────────────────────
+  if (txHash) {
+    return (
+      <div className={onBack ? "p-1 pt-0" : "flex items-start justify-center pt-4"}>
+        <div className={cn(
+          "w-full rounded-2xl p-5",
+          onBack ? "bg-background" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
+        )}>
+          <div className="flex flex-col items-center gap-4 py-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
+              <CheckCircle className="h-6 w-6 text-success" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Sent successfully</p>
+              <p className="font-mono text-lg font-bold text-foreground mt-1">
+                {formatCryptoAmount(parsedAmount)} {selectedCurrency}
+              </p>
+            </div>
+            <code className="max-w-full truncate font-mono text-[11px] text-muted px-3">
+              {txHash}
+            </code>
+            <button
+              onClick={() => { setTxHash(null); setAmount(""); setAddress(""); }}
+              className="mt-2 rounded-xl border border-border bg-surface px-6 py-2.5 text-[13px] font-medium text-foreground hover:bg-surface/80 transition-colors"
+            >
+              New transaction
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -259,22 +322,35 @@ export function SendInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           )}
         </div>
 
+        {/* ── Error ── */}
+        {sendError && (
+          <div data-animate className="mt-3 flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/5 px-3 py-2.5">
+            <AlertCircle className="h-3 w-3 text-error shrink-0" />
+            <span className="text-[10px] text-error">{sendError}</span>
+          </div>
+        )}
+
         {/* ── Send Button ── */}
         <div data-animate className="mt-6">
           <button
-            disabled={!canSend}
+            disabled={!canSend || sending}
+            onClick={handleSend}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[14px] font-semibold transition-all duration-200",
-              canSend
+              canSend && !sending
                 ? "bg-primary text-white hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:scale-[0.99]"
                 : "cursor-not-allowed border border-border bg-surface text-muted"
             )}
-            style={canSend ? {
+            style={canSend && !sending ? {
               boxShadow: "0 4px 20px rgba(255,102,0,0.3), 0 0 40px rgba(255,102,0,0.08)",
             } : undefined}
           >
-            <ArrowUpRight className="h-4 w-4" />
-            Send
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowUpRight className="h-4 w-4" />
+            )}
+            {sending ? "Sending..." : "Send"}
           </button>
         </div>
       </div>

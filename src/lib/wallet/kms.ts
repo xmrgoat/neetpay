@@ -1,52 +1,70 @@
-import { KMSClient, DecryptCommand, EncryptCommand } from "@aws-sdk/client-kms";
-
-const kmsClient = new KMSClient({
-  region: process.env.AWS_REGION || "us-east-1",
-});
-
-const kmsKeyId = process.env.AWS_KMS_KEY_ID;
+import { createCipheriv, createDecipheriv, scryptSync, randomBytes } from "crypto";
 
 /**
- * Decrypt the master seed using AWS KMS envelope encryption.
- * The encrypted seed is stored as base64 in ENCRYPTED_MASTER_SEED env var.
+ * Local AES-256-GCM encryption — replaces AWS KMS.
+ *
+ * Env vars:
+ *   SEED_ENCRYPTION_KEY  — passphrase used to derive the AES key
+ *   ENCRYPTED_SEED       — base64 blob (salt:iv:tag:ciphertext)
+ *
+ * To generate ENCRYPTED_SEED, run:  npx ts-node scripts/encrypt-seed.ts
+ */
+
+const ALGO = "aes-256-gcm";
+const KEY_LEN = 32;
+const SALT_LEN = 16;
+const IV_LEN = 12;
+const TAG_LEN = 16;
+
+function getEncryptionKey(): string {
+  const key = process.env.SEED_ENCRYPTION_KEY;
+  if (!key) throw new Error("SEED_ENCRYPTION_KEY environment variable is not set");
+  return key;
+}
+
+function deriveKey(passphrase: string, salt: Buffer): Buffer {
+  return scryptSync(passphrase, salt, KEY_LEN) as Buffer;
+}
+
+/**
+ * Decrypt the master seed stored in ENCRYPTED_SEED env var.
  */
 export async function decryptMasterSeed(): Promise<Buffer> {
-  const encryptedSeed = process.env.ENCRYPTED_MASTER_SEED;
-  if (!encryptedSeed) {
-    throw new Error("ENCRYPTED_MASTER_SEED environment variable is not set");
+  const blob = process.env.ENCRYPTED_SEED;
+  if (!blob) {
+    throw new Error("ENCRYPTED_SEED environment variable is not set");
   }
 
-  const command = new DecryptCommand({
-    CiphertextBlob: Buffer.from(encryptedSeed, "base64"),
-    KeyId: kmsKeyId,
-  });
+  const raw = Buffer.from(blob, "base64");
 
-  const response = await kmsClient.send(command);
-  if (!response.Plaintext) {
-    throw new Error("KMS decryption returned empty plaintext");
-  }
+  // Layout: salt(16) | iv(12) | tag(16) | ciphertext(rest)
+  const salt = raw.subarray(0, SALT_LEN);
+  const iv = raw.subarray(SALT_LEN, SALT_LEN + IV_LEN);
+  const tag = raw.subarray(SALT_LEN + IV_LEN, SALT_LEN + IV_LEN + TAG_LEN);
+  const ciphertext = raw.subarray(SALT_LEN + IV_LEN + TAG_LEN);
 
-  return Buffer.from(response.Plaintext);
+  const key = deriveKey(getEncryptionKey(), salt);
+  const decipher = createDecipheriv(ALGO, key, iv);
+  decipher.setAuthTag(tag);
+
+  const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+  return decrypted;
 }
 
 /**
  * Encrypt a master seed for storage.
- * Used during initial setup to generate the ENCRYPTED_MASTER_SEED value.
+ * Returns a base64 blob to store as ENCRYPTED_SEED.
  */
 export async function encryptMasterSeed(seed: Buffer): Promise<string> {
-  if (!kmsKeyId) {
-    throw new Error("AWS_KMS_KEY_ID environment variable is not set");
-  }
+  const salt = randomBytes(SALT_LEN);
+  const iv = randomBytes(IV_LEN);
+  const key = deriveKey(getEncryptionKey(), salt);
 
-  const command = new EncryptCommand({
-    KeyId: kmsKeyId,
-    Plaintext: seed,
-  });
+  const cipher = createCipheriv(ALGO, key, iv);
+  const encrypted = Buffer.concat([cipher.update(seed), cipher.final()]);
+  const tag = cipher.getAuthTag();
 
-  const response = await kmsClient.send(command);
-  if (!response.CiphertextBlob) {
-    throw new Error("KMS encryption returned empty ciphertext");
-  }
-
-  return Buffer.from(response.CiphertextBlob).toString("base64");
+  // Pack: salt | iv | tag | ciphertext
+  const blob = Buffer.concat([salt, iv, tag, encrypted]);
+  return blob.toString("base64");
 }
