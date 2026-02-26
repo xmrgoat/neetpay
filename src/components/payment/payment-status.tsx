@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { Clock, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Clock, Loader2, CheckCircle2, XCircle, AlertTriangle, type LucideIcon } from "lucide-react";
 import type { PaymentStatus as PaymentStatusType } from "@/lib/constants";
 
-const STATUS_ICONS: Record<string, React.ElementType> = {
+const STATUS_ICONS: Record<string, LucideIcon> = {
   new: Clock,
   waiting: Clock,
   confirming: Loader2,
