@@ -289,9 +289,9 @@
   --color-orange-900: var(--orange-900);
   --color-orange-950: var(--orange-950);
 
-  --font-heading: "SF Pro Display", var(--font-inter), "Helvetica Neue", sans-serif;
-  --font-body: "SF Pro Text", var(--font-inter), Helvetica, sans-serif;
-  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-satoshi), var(--font-inter), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-slide-up: slide-up 0.4s ease-out;
@@ -317,13 +317,13 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: "SF Pro Text", var(--font-inter), Helvetica, sans-serif;
+    font-family: var(--font-inter), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: "SF Pro Display", var(--font-inter), "Helvetica Neue", sans-serif;
+    font-family: var(--font-satoshi), var(--font-inter), sans-serif;
     letter-spacing: -0.025em;
   }
 
