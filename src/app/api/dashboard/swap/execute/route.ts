@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { createFixedShift } from "@/lib/swap/sideshift";
+import { executeSwap } from "@/lib/swap/router";
 import { getDepositAddress } from "@/lib/wallet/wallet-service";
 import { CHAIN_REGISTRY } from "@/lib/chains/registry";
 
@@ -11,16 +11,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { quoteId, settleAddress, refundAddress, toCurrency } = body as {
+  const { quoteId, settleAddress, refundAddress, toCurrency, provider } = body as {
     quoteId?: string;
     settleAddress?: string;
     refundAddress?: string;
     toCurrency?: string;
+    provider?: "thorchain" | "oneinch" | "sideshift";
   };
 
-  if (!quoteId || !settleAddress) {
+  if (!quoteId || !settleAddress || !provider) {
     return NextResponse.json(
-      { error: "Missing required fields: quoteId, settleAddress" },
+      { error: "Missing required fields: quoteId, settleAddress, provider" },
       { status: 400 },
     );
   }
@@ -59,32 +60,28 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const userIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || req.headers.get("x-real-ip")
-    || "127.0.0.1";
-
   try {
-    const shift = await createFixedShift({
+    const result = await executeSwap({
       quoteId,
       settleAddress: resolvedAddress,
       refundAddress,
-      userIp,
+      provider,
     });
 
     return NextResponse.json({
-      shiftId: shift.id,
-      depositAddress: shift.depositAddress,
-      depositMemo: shift.depositMemo,
-      depositAmount: shift.depositAmount,
-      settleAmount: shift.settleAmount,
-      rate: shift.rate,
-      status: shift.status,
-      expiresAt: shift.expiresAt,
-      averageShiftSeconds: shift.averageShiftSeconds,
+      swapId: result.swapId,
+      provider: result.provider,
+      depositAddress: result.depositAddress,
+      depositMemo: result.depositMemo,
+      depositAmount: result.depositAmount,
+      settleAmount: result.settleAmount,
+      rate: result.rate,
+      status: result.status,
+      expiresAt: result.expiresAt,
     });
   } catch (err) {
     console.error("[swap/execute]", err);
-    const message = err instanceof Error ? err.message : "Shift creation failed";
+    const message = err instanceof Error ? err.message : "Swap execution failed";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

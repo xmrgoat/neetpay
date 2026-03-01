@@ -13,17 +13,17 @@ export function PricingSection() {
   return (
     <section className="py-24 sm:py-32 border-t border-border">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-12">
+        <div className="mb-12 text-center">
           <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
             Flat fee. Not a percentage.
           </h2>
-          <p className="mt-4 text-lg text-foreground-secondary max-w-lg">
+          <p className="mt-4 text-lg text-foreground-secondary max-w-lg mx-auto">
             At $3,000/month in volume, you pay $29. A 1% processor charges $30 — just for that month.
           </p>
         </div>
 
         {/* Toggle */}
-        <div className="flex items-center gap-3 mb-12">
+        <div className="flex items-center justify-center gap-3 mb-12">
           <button
             onClick={() => setAnnual(false)}
             className={cn(
@@ -63,13 +63,10 @@ export function PricingSection() {
         {/* Cards */}
         <div
           ref={gridRef}
-          className="grid gap-4 max-w-5xl sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-4 max-w-3xl mx-auto sm:grid-cols-2"
         >
           <div data-pricing-card>
             <PricingCard {...PRICING_PLANS.free} annual={annual} />
-          </div>
-          <div data-pricing-card>
-            <PricingCard {...PRICING_PLANS.pro} annual={annual} recommended />
           </div>
           <div data-pricing-card>
             <PricingCard {...PRICING_PLANS.enterprise} annual={annual} />

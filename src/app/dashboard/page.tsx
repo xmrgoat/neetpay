@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getOverviewStats, getRecentTransactions, getAnalyticsData } from "@/lib/dashboard/queries";
+import { getOverviewStats, getRecentTransactions, getAnalyticsData, getKpiSparklines } from "@/lib/dashboard/queries";
 import { getBalances } from "@/lib/wallet/wallet-service";
 import { getAllPrices } from "@/lib/price/coingecko";
 import { CHAIN_REGISTRY } from "@/lib/chains/registry";
@@ -26,12 +26,13 @@ export default async function DashboardPage() {
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [stats, analytics, recentPayments, balances, prices] = await Promise.all([
+  const [stats, analytics, recentPayments, balances, prices, sparklines] = await Promise.all([
     getOverviewStats(userId),
     getAnalyticsData(userId, thirtyDaysAgo, now),
     getRecentTransactions(userId, 6),
     getBalances(userId),
     getAllPrices(),
+    getKpiSparklines(userId),
   ]);
 
   // ── Build wallet holdings ─────────────────────────────────────────────────
@@ -93,6 +94,7 @@ export default async function DashboardPage() {
           avgPayment={stats.avgPayment}
           avgChange={stats.avgChange}
           activeLinks={stats.pendingCount}
+          sparklines={sparklines}
         />
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-8">

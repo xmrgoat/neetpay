@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowRight } from "lucide-react";
 import { NAV_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -96,11 +96,11 @@ export function Navbar() {
             >
               Login
             </Link>
-            <Link
-              href="/register"
-              className="rounded-full border border-white/[0.12] px-5 py-2 text-sm text-white transition-all duration-200 hover:bg-white/[0.05] hover:border-white/[0.2]"
-            >
-              Get Started
+            <Link href="/register" className="btn-rainbow rounded-full cursor-pointer">
+              <div className="btn-rainbow-inner flex items-center justify-center h-9 px-5 rounded-full">
+                <span className="font-semibold text-sm">Get Started</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-black" />
+              </div>
             </Link>
           </div>
 

@@ -4,112 +4,146 @@ import { useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import { Shield, Zap, Code2, Globe, Terminal } from "lucide-react";
+import { Paintbrush, Link2, ArrowRight, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 gsap.registerPlugin(ScrollTrigger);
 
-/* ─── Miniature UI mockups (always dark — product previews) ─ */
+/* ─── White-label checkout mockup ─────────────────────── */
 
-function ApiMockup() {
+function CheckoutMockup() {
   return (
-    <div className="rounded-lg border border-[#1e1e24] bg-[#0a0a0e] overflow-hidden text-[11px] font-mono">
+    <div className="rounded-xl border border-[#1e1e24] bg-[#0a0a0e] overflow-hidden w-full max-w-[320px]">
+      {/* Browser bar */}
       <div className="flex items-center gap-2 border-b border-[#1e1e24] px-3 py-2">
-        <Terminal size={10} className="text-[#555]" />
-        <span className="text-[10px] text-[#555]">checkout.ts</span>
-      </div>
-      <div className="p-3 space-y-0.5 text-[11px] leading-5">
-        <div><span className="text-[#666]">const</span> <span className="text-[#ccc]">payment</span> <span className="text-[#666]">=</span> <span className="text-[#666]">await</span> <span className="text-[#999]">fetch</span><span className="text-[#666]">(</span></div>
-        <div className="pl-3"><span className="text-[#ff6600]/70">&quot;/v1/payment&quot;</span><span className="text-[#666]">,</span> <span className="text-[#666]">{"{"}</span></div>
-        <div className="pl-5"><span className="text-[#999]">amount</span><span className="text-[#666]">:</span> <span className="text-[#ff6600]/70">29.99</span><span className="text-[#666]">,</span></div>
-        <div className="pl-5"><span className="text-[#999]">currency</span><span className="text-[#666]">:</span> <span className="text-[#ff6600]/70">&quot;USD&quot;</span></div>
-        <div className="pl-3"><span className="text-[#666]">{"}"}</span></div>
-        <div><span className="text-[#666]">);</span></div>
-      </div>
-    </div>
-  );
-}
-
-function MultiChainMockup() {
-  const chains = [
-    { name: "Ethereum", tokens: "ETH, USDT, USDC", color: "#627EEA" },
-    { name: "Solana", tokens: "SOL", color: "#9945FF" },
-    { name: "Monero", tokens: "XMR", color: "#FF6600" },
-    { name: "Bitcoin", tokens: "BTC", color: "#F7931A" },
-    { name: "Tron", tokens: "TRX, USDT", color: "#FF0013" },
-  ];
-
-  return (
-    <div className="space-y-1.5">
-      {chains.map((chain) => (
-        <div key={chain.name} className="flex items-center justify-between rounded-lg border border-[#1e1e24] bg-[#0a0a0e] px-3 py-2">
-          <div className="flex items-center gap-2.5">
-            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: chain.color }} />
-            <span className="text-[11px] font-medium text-[#ccc]">{chain.name}</span>
-          </div>
-          <span className="font-mono text-[10px] text-[#555]">{chain.tokens}</span>
+        <div className="flex gap-1">
+          <div className="h-2 w-2 rounded-full bg-[#333]" />
+          <div className="h-2 w-2 rounded-full bg-[#333]" />
+          <div className="h-2 w-2 rounded-full bg-[#333]" />
         </div>
-      ))}
-    </div>
-  );
-}
-
-function WebhookMockup() {
-  return (
-    <div className="rounded-lg border border-[#1e1e24] bg-[#0a0a0e] overflow-hidden">
-      <div className="flex items-center justify-between border-b border-[#1e1e24] px-3 py-2">
-        <span className="text-[10px] text-[#555] uppercase tracking-wider">Webhook Log</span>
-        <span className="inline-flex h-4 items-center rounded bg-emerald-500/15 px-1.5 text-[9px] font-medium text-emerald-400">LIVE</span>
+        <div className="flex-1 flex justify-center">
+          <span className="text-[9px] text-[#444] font-mono">pay.yourstore.com/checkout</span>
+        </div>
       </div>
-      <div className="divide-y divide-[#1a1a22]">
-        {[
-          { event: "payment.completed", status: "200", time: "12ms" },
-          { event: "payment.confirming", status: "200", time: "8ms" },
-          { event: "invoice.created", status: "200", time: "15ms" },
-        ].map((log, i) => (
-          <div key={i} className="flex items-center justify-between px-3 py-2">
-            <span className="font-mono text-[10px] text-[#999]">{log.event}</span>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] text-emerald-400">{log.status}</span>
-              <span className="font-mono text-[10px] text-[#444]">{log.time}</span>
+
+      {/* Checkout content */}
+      <div className="p-5 space-y-4">
+        {/* Merchant branding */}
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+            <span className="text-[10px] font-bold text-white">YS</span>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-[#ccc]">Your Store</p>
+            <p className="text-[9px] text-[#555]">Order #4812</p>
+          </div>
+        </div>
+
+        {/* Amount */}
+        <div className="rounded-lg bg-[#111116] border border-[#1e1e24] p-3 text-center">
+          <p className="text-[10px] text-[#555] mb-1">Amount due</p>
+          <p className="text-xl font-heading font-bold text-[#eee]">$29.99</p>
+        </div>
+
+        {/* Crypto selector */}
+        <div className="space-y-1.5">
+          <p className="text-[9px] text-[#555] uppercase tracking-wider">Pay with</p>
+          {[
+            { name: "ETH", sub: "Ethereum", color: "#627EEA", selected: true },
+            { name: "XMR", sub: "Monero", color: "#FF6600" },
+            { name: "BTC", sub: "Bitcoin", color: "#F7931A" },
+          ].map((c) => (
+            <div
+              key={c.name}
+              className={`flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+                c.selected
+                  ? "border border-[#ff6600]/40 bg-[#ff6600]/5"
+                  : "border border-[#1e1e24] bg-[#0e0e12]"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
+                <span className="text-[11px] font-medium text-[#ccc]">{c.name}</span>
+                <span className="text-[9px] text-[#444]">{c.sub}</span>
+              </div>
+              {c.selected && (
+                <div className="h-3 w-3 rounded-full bg-[#ff6600] flex items-center justify-center">
+                  <svg width="6" height="6" viewBox="0 0 6 6" fill="none">
+                    <path d="M1 3L2.5 4.5L5 1.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* Pay button */}
+        <div className="rounded-lg bg-[#ff6600] py-2.5 text-center">
+          <span className="text-[11px] font-semibold text-white">Pay 0.0089 ETH</span>
+        </div>
+
+        <p className="text-[8px] text-[#333] text-center">Powered by neetpay</p>
       </div>
     </div>
   );
 }
 
-function PrivacyMockup() {
+/* ─── Payment link mockup ─────────────────────────────── */
+
+function PaymentLinkMockup() {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3 rounded-lg border border-[#1e1e24] bg-[#0a0a0e] px-3 py-2.5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-500/10">
-          <Shield size={12} className="text-emerald-400" />
+    <div className="space-y-3 w-full max-w-[340px]">
+      {/* Link creation */}
+      <div className="rounded-xl border border-[#1e1e24] bg-[#0a0a0e] overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-[#1e1e24] px-3 py-2">
+          <Link2 size={10} className="text-[#555]" />
+          <span className="text-[10px] text-[#555]">Payment Links</span>
         </div>
-        <div>
-          <p className="text-[11px] font-medium text-[#ccc]">No KYC Required</p>
-          <p className="text-[9px] text-[#555]">Email-only sign up</p>
+        <div className="p-4 space-y-3">
+          {/* Link row */}
+          {[
+            { label: "Pro Plan — Monthly", amount: "$29.00", status: "active", clicks: "142" },
+            { label: "Design Workshop", amount: "$199.00", status: "active", clicks: "38" },
+            { label: "Consultation 1h", amount: "$75.00", status: "active", clicks: "91" },
+          ].map((link, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg border border-[#1e1e24] bg-[#0e0e12] px-3 py-2.5"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-medium text-[#ccc] truncate">{link.label}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] font-mono text-[#ff6600]/70">{link.amount}</span>
+                  <span className="text-[8px] text-[#444]">{link.clicks} clicks</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 ml-3">
+                <span className="inline-flex h-4 items-center rounded bg-emerald-500/15 px-1.5 text-[8px] font-medium text-emerald-400">
+                  {link.status}
+                </span>
+                <ExternalLink size={10} className="text-[#444]" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="flex items-center gap-3 rounded-lg border border-[#1e1e24] bg-[#0a0a0e] px-3 py-2.5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#ff6600]/10">
-          <Globe size={12} className="text-[#ff6600]" />
+
+      {/* Shareable link preview */}
+      <div className="rounded-lg border border-dashed border-[#1e1e24] bg-[#08080c] px-3 py-2.5 flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-[10px] text-[#555] truncate">
+            pay.neetpay.com/l/<span className="text-[#ff6600]/60">pro-plan-monthly</span>
+          </p>
         </div>
-        <div>
-          <p className="text-[11px] font-medium text-[#ccc]">Non-Custodial</p>
-          <p className="text-[9px] text-[#555]">Direct-to-wallet settlement</p>
-        </div>
-      </div>
-      <div className="rounded-lg border border-dashed border-[#1e1e24] bg-[#08080c] px-3 py-2.5">
-        <p className="font-mono text-[10px] text-[#444] text-center">
-          HMAC-SHA512 signed webhooks
-        </p>
+        <button className="text-[9px] text-[#666] border border-[#1e1e24] rounded px-2 py-1 hover:text-[#999] transition-colors shrink-0">
+          Copy
+        </button>
       </div>
     </div>
   );
 }
 
-/* ─── Features section ────────────────────────────────────── */
+/* ─── Features section ────────────────────────────────── */
 
 export function FeaturesSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -118,7 +152,6 @@ export function FeaturesSection() {
     () => {
       if (!sectionRef.current) return;
 
-      // Heading — scrub fade in/out
       const headTl = gsap.timeline({
         scrollTrigger: {
           trigger: "[data-features-heading]",
@@ -135,8 +168,7 @@ export function FeaturesSection() {
         { opacity: 0, duration: 0.4 }, 0.6
       );
 
-      // Cards — scrub fade in/out
-      const cards = sectionRef.current.querySelectorAll("[data-bento-card]");
+      const cards = sectionRef.current.querySelectorAll("[data-feature-card]");
       cards.forEach((card) => {
         const cardTl = gsap.timeline({
           scrollTrigger: {
@@ -161,117 +193,99 @@ export function FeaturesSection() {
   return (
     <section id="products" ref={sectionRef} className="py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6">
-        {/* Section heading */}
+        {/* Heading */}
         <div data-features-heading className="mb-16">
           <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-            What you actually get
+            Two ways to get paid.
           </h2>
           <p className="mt-4 max-w-lg text-lg text-foreground-secondary leading-relaxed">
-            REST API, webhooks, multi-chain support, no KYC.
-            That&apos;s the product.
+            Embed a checkout or share a link. Either way, your customer pays in crypto and you keep everything.
           </p>
         </div>
 
-        {/* Bento grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Card 1 — API (large, spans 2 cols) */}
+        {/* Two feature cards */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Card 1 — White-label checkout */}
           <div
-            data-bento-card
-            className="sm:col-span-2 rounded-2xl border border-border bg-surface p-6 sm:p-8 flex flex-col sm:flex-row gap-6 sm:gap-10 transition-colors hover:border-border-hover"
+            data-feature-card
+            className="rounded-2xl border border-border bg-surface p-6 sm:p-8 transition-colors hover:border-border-hover"
           >
-            <div className="flex-1 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Code2 size={16} className="text-muted" strokeWidth={1.5} />
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wider">API</span>
-                </div>
-                <h3 className="font-heading text-xl font-semibold mb-3">
-                  Three lines of code
-                </h3>
-                <p className="text-sm text-foreground-secondary leading-relaxed max-w-sm">
-                  A single REST endpoint creates a payment. Webhooks notify your server when funds arrive. No SDKs required.
-                </p>
-              </div>
-              <div className="mt-6 flex items-center gap-6">
-                <div>
-                  <p className="font-heading text-xl font-bold">1</p>
-                  <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Endpoint</p>
-                </div>
-                <div className="h-6 w-px bg-border" />
-                <div>
-                  <p className="font-heading text-xl font-bold">5 min</p>
-                  <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Integration</p>
-                </div>
-                <div className="h-6 w-px bg-border" />
-                <div>
-                  <p className="font-heading text-xl font-bold">0</p>
-                  <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Dependencies</p>
-                </div>
-              </div>
+            <div className="flex items-center gap-2 mb-6">
+              <Paintbrush size={16} className="text-muted" strokeWidth={1.5} />
+              <span className="text-[11px] font-medium text-muted uppercase tracking-wider">White-label</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <ApiMockup />
-            </div>
-          </div>
 
-          {/* Card 2 — Privacy */}
-          <div
-            data-bento-card
-            className="rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-border-hover"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Shield size={16} className="text-muted" strokeWidth={1.5} />
-              <span className="text-[11px] font-medium text-muted uppercase tracking-wider">Privacy</span>
-            </div>
-            <h3 className="font-heading text-lg font-semibold mb-2">
-              No customer data leaves your server
+            <h3 className="font-heading text-2xl font-semibold mb-3 sm:text-3xl">
+              Your brand.{" "}
+              <span className="text-muted">Your checkout.</span>
             </h3>
-            <p className="text-sm text-foreground-secondary leading-relaxed mb-5">
-              No KYC, no tracking, no data brokers. XMR support is first-party and native — not a plugin.
+            <p className="text-foreground-secondary leading-relaxed max-w-md mb-8">
+              Custom domain, your logo, your colors. Customers see your brand — not ours. Embed it in your site or redirect to a hosted page.
             </p>
-            <PrivacyMockup />
-          </div>
 
-          {/* Card 3 — Multi-chain */}
-          <div
-            data-bento-card
-            className="rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-border-hover"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Globe size={16} className="text-muted" strokeWidth={1.5} />
-              <span className="text-[11px] font-medium text-muted uppercase tracking-wider">Multi-chain</span>
+            <div className="flex justify-center">
+              <CheckoutMockup />
             </div>
-            <h3 className="font-heading text-lg font-semibold mb-2">
-              Your customer pays in what they have
-            </h3>
-            <p className="text-sm text-foreground-secondary leading-relaxed mb-5">
-              ETH, BTC, SOL, XMR, TRX, BNB, USDT, USDC — one API, unified interface across 5 chains.
-            </p>
-            <MultiChainMockup />
           </div>
 
-          {/* Card 4 — Webhooks (spans 2 cols) */}
+          {/* Card 2 — Payment links */}
           <div
-            data-bento-card
-            className="sm:col-span-2 rounded-2xl border border-border bg-surface p-6 sm:p-8 flex flex-col sm:flex-row gap-6 sm:gap-10 transition-colors hover:border-border-hover"
+            data-feature-card
+            className="rounded-2xl border border-border bg-surface p-6 sm:p-8 transition-colors hover:border-border-hover"
           >
-            <div className="flex-1 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Zap size={16} className="text-muted" strokeWidth={1.5} />
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wider">Webhooks</span>
-                </div>
-                <h3 className="font-heading text-xl font-semibold mb-3">
-                  Know the moment funds arrive
-                </h3>
-                <p className="text-sm text-foreground-secondary leading-relaxed max-w-sm">
-                  HMAC-SHA512 signed callbacks for every payment event. Your backend stays in sync without polling.
-                </p>
+            <div className="flex items-center gap-2 mb-6">
+              <Link2 size={16} className="text-muted" strokeWidth={1.5} />
+              <span className="text-[11px] font-medium text-muted uppercase tracking-wider">Payment Links</span>
+            </div>
+
+            <h3 className="font-heading text-2xl font-semibold mb-3 sm:text-3xl">
+              Share a link.{" "}
+              <span className="text-muted">Get paid.</span>
+            </h3>
+            <p className="text-foreground-secondary leading-relaxed max-w-md mb-8">
+              No website needed. Create a payment link from the dashboard, share it anywhere — social, email, DMs. Track every click and conversion.
+            </p>
+
+            <div className="flex justify-center">
+              <PaymentLinkMockup />
+            </div>
+          </div>
+        </div>
+
+        {/* Subtle stats row */}
+        <div
+          data-feature-card
+          className="mt-4 rounded-2xl border border-border bg-surface px-6 py-5 sm:px-8"
+        >
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-8 sm:gap-12">
+              <div className="text-center sm:text-left">
+                <p className="font-heading text-2xl font-bold">0%</p>
+                <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Transaction fees</p>
+              </div>
+              <div className="h-8 w-px bg-border hidden sm:block" />
+              <div className="text-center sm:text-left">
+                <p className="font-heading text-2xl font-bold">18+</p>
+                <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Cryptocurrencies</p>
+              </div>
+              <div className="h-8 w-px bg-border hidden sm:block" />
+              <div className="text-center sm:text-left">
+                <p className="font-heading text-2xl font-bold">5</p>
+                <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Chains</p>
+              </div>
+              <div className="h-8 w-px bg-border hidden sm:block" />
+              <div className="text-center sm:text-left">
+                <p className="font-heading text-2xl font-bold">0</p>
+                <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">KYC required</p>
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <WebhookMockup />
-            </div>
+            <Link
+              href="/register"
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors shrink-0"
+            >
+              Start for free
+              <ArrowRight size={14} />
+            </Link>
           </div>
         </div>
       </div>

@@ -405,9 +405,136 @@
 }
 
 /* ------------------------------------------------
+   react-grid-layout overrides
+   ------------------------------------------------ */
+.widget-grid-layout .react-grid-item.react-grid-placeholder {
+  background: var(--primary) !important;
+  opacity: 0.08 !important;
+  border-radius: 12px;
+  border: 2px dashed var(--primary) !important;
+}
+.widget-grid-layout .react-grid-item > .react-resizable-handle {
+  width: 16px !important;
+  height: 16px !important;
+}
+.widget-grid-layout .react-grid-item > .react-resizable-handle::after {
+  border-right-color: var(--muted) !important;
+  border-bottom-color: var(--muted) !important;
+  right: 4px !important;
+  bottom: 4px !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+.widget-grid-layout .react-grid-item.react-draggable-dragging {
+  z-index: 40;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  opacity: 0.92;
+}
+
+/* ------------------------------------------------
    Focus visible
    ------------------------------------------------ */
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* ------------------------------------------------
+   Rainbow CTA button (orange theme)
+   ------------------------------------------------ */
+@property --rainbow-pos {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --rainbow-blur {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --rainbow-border-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --rainbow-glow-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.15;
+}
+@property --rainbow-scale {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+.btn-rainbow {
+  --rainbow-gradient: linear-gradient(
+    to right,
+    #ffdbb5, #ffb366,
+    #ff6600, #e85d00, #ff8533,
+    #ffaa66, #ff6600, #cc5200,
+    #ff7a1a, #ffdbb5
+  );
+  --rainbow-glow-bg: var(--rainbow-gradient);
+  position: relative;
+  z-index: 0;
+  transform: scale(var(--rainbow-scale));
+  transition:
+    --rainbow-blur 0.3s ease,
+    --rainbow-border-opacity 0.3s ease,
+    --rainbow-glow-opacity 0.3s ease,
+    --rainbow-scale 0.2s cubic-bezier(.76, -.25, .51, 1.13);
+  animation: rainbow-shift 4s ease infinite;
+}
+
+@keyframes rainbow-shift {
+  0%, 100% { --rainbow-pos: 0; }
+  50%      { --rainbow-pos: 100; }
+}
+
+.btn-rainbow > .btn-rainbow-inner > span {
+  color: black;
+  -webkit-text-fill-color: black;
+  letter-spacing: 0.02ch;
+  font-weight: 700;
+}
+
+.btn-rainbow > .btn-rainbow-inner::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  background: var(--rainbow-gradient) no-repeat calc(var(--rainbow-pos) * 1%) 0% / 900%;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: var(--rainbow-border-opacity);
+}
+
+.btn-rainbow > .btn-rainbow-inner {
+  position: relative;
+  background: #ff6600;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.btn-rainbow > .btn-rainbow-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--rainbow-glow-bg) no-repeat calc(var(--rainbow-pos) * 1%) 0% / 900%;
+  border-radius: inherit;
+  z-index: -2;
+  filter: blur(calc(var(--rainbow-blur) * 1px));
+  opacity: var(--rainbow-glow-opacity);
+}
+
+.btn-rainbow:hover {
+  --rainbow-scale: 1.05;
+  --rainbow-blur: 30;
+  --rainbow-glow-opacity: 0.35;
+}
+
+.btn-rainbow:active {
+  --rainbow-scale: 0.98;
+  --rainbow-blur: 15;
 }

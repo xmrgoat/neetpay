@@ -8,12 +8,18 @@ import {
   ArrowLeft,
   AlertCircle,
   RefreshCw,
-  Zap,
   Loader2,
   Clock,
   Copy,
   Check,
   ExternalLink,
+  Settings2,
+  Route,
+  ChevronDown,
+  ChevronUp,
+  Fuel,
+  Shield,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,18 +36,23 @@ import {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+type SwapProviderName = "thorchain" | "oneinch" | "sideshift";
+
 interface QuoteResponse {
+  provider: SwapProviderName;
   quoteId: string;
   rate: string;
   depositAmount: string;
   settleAmount: string;
   expiresAt: string;
-  min: string;
-  max: string;
+  min: string | null;
+  max: string | null;
+  fees?: { network: string; protocol: string; affiliate?: string };
 }
 
-interface ShiftResponse {
-  shiftId: string;
+interface SwapResponse {
+  swapId: string;
+  provider: SwapProviderName;
   depositAddress: string;
   depositMemo?: string;
   depositAmount: string;
@@ -49,16 +60,29 @@ interface ShiftResponse {
   rate: string;
   status: string;
   expiresAt: string;
-  averageShiftSeconds?: string;
 }
 
 interface StatusResponse {
-  shiftId: string;
+  swapId: string;
+  provider: SwapProviderName;
   status: string;
-  depositReceivedAt?: string;
   settleHash?: string;
   settleAmount: string;
 }
+
+const PROVIDER_LABELS: Record<SwapProviderName, string> = {
+  thorchain: "THORChain",
+  oneinch: "1inch Fusion",
+  sideshift: "SideShift.ai",
+};
+
+const PROVIDER_TYPES: Record<SwapProviderName, string> = {
+  thorchain: "Cross-chain DEX",
+  oneinch: "EVM DEX Aggregator",
+  sideshift: "Instant Exchange",
+};
+
+const SLIPPAGE_PRESETS = [0.5, 1, 3];
 
 type SwapStep = "input" | "confirming" | "depositing" | "processing" | "complete" | "error";
 
@@ -82,20 +106,30 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
   const [isReversing, setIsReversing] = useState(false);
   const [inputInFiat, setInputInFiat] = useState(false);
 
-  // SideShift state
+  // Settings
+  const [showSettings, setShowSettings] = useState(false);
+  const [slippage, setSlippage] = useState(1);
+  const [customSlippage, setCustomSlippage] = useState("");
+
+  // Details panel
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Quote state
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [lastQuoteTime, setLastQuoteTime] = useState<number>(0);
 
-  // Shift execution state
+  // Swap execution state
   const [step, setStep] = useState<SwapStep>("input");
-  const [shift, setShift] = useState<ShiftResponse | null>(null);
-  const [shiftStatus, setShiftStatus] = useState<StatusResponse | null>(null);
+  const [swap, setSwap] = useState<SwapResponse | null>(null);
+  const [swapStatus, setSwapStatus] = useState<StatusResponse | null>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Countdown
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const expiredRef = useRef(false);
 
   useGSAP(() => {
     if (!containerRef.current) return;
@@ -126,17 +160,23 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
   const fiatPrice = fromPrice * USD_TO_FIAT;
   const parsedFrom = inputInFiat ? (fiatPrice > 0 ? rawInput / fiatPrice : 0) : rawInput;
 
-  // Use SideShift quote data when available, otherwise fallback to price ratio
-  const ssRate = quote ? parseFloat(quote.rate) : 0;
-  const ssSettle = quote?.settleAmount ? parseFloat(quote.settleAmount) : 0;
+  const quoteRate = quote ? parseFloat(quote.rate) : 0;
+  const quoteSettle = quote?.settleAmount ? parseFloat(quote.settleAmount) : 0;
   const fallbackRate = toPrice > 0 ? fromPrice / toPrice : 0;
-  const displayRate = ssRate > 0 ? ssRate : fallbackRate;
-  const toAmount = ssSettle > 0 ? ssSettle : parsedFrom * fallbackRate;
+  const displayRate = quoteRate > 0 ? quoteRate : fallbackRate;
+  const toAmount = quoteSettle > 0 ? quoteSettle : parsedFrom * fallbackRate;
   const toUsd = toAmount * toPrice;
+  const fromUsd = parsedFrom * fromPrice;
 
-  // Min/max from SideShift
-  const minDeposit = quote ? parseFloat(quote.min) : 0;
-  const maxDeposit = quote ? parseFloat(quote.max) : 0;
+  // Price impact calculation
+  const marketRate = fallbackRate;
+  const priceImpact = marketRate > 0 && quoteRate > 0
+    ? Math.abs(((quoteRate - marketRate) / marketRate) * 100)
+    : 0;
+
+  // Min/max from quote
+  const minDeposit = quote?.min ? parseFloat(quote.min) : 0;
+  const maxDeposit = quote?.max ? parseFloat(quote.max) : 0;
   const belowMin = minDeposit > 0 && parsedFrom > 0 && parsedFrom < minDeposit;
   const aboveMax = maxDeposit > 0 && parsedFrom > maxDeposit;
 
@@ -149,6 +189,18 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
     && !aboveMax
     && !quoteLoading
     && !!quote?.quoteId;
+
+  // Button label
+  const getButtonLabel = () => {
+    if (quoteLoading) return "Finding best rate...";
+    if (!fromAmount || parsedFrom === 0) return "Enter amount";
+    if (fromCurrency === toCurrency) return "Select different tokens";
+    if (insufficientBalance) return "Insufficient balance";
+    if (belowMin) return `Min ${formatCryptoAmount(minDeposit)} ${fromCurrency}`;
+    if (aboveMax) return `Max ${formatCryptoAmount(maxDeposit)} ${fromCurrency}`;
+    if (!quote) return "Getting quote...";
+    return "Swap";
+  };
 
   // ── Debounced quote fetch ─────────────────────────────────────────────────
   const fetchQuote = useCallback(async (from: string, to: string, amount: string) => {
@@ -166,6 +218,7 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
       }
       const data: QuoteResponse = await res.json();
       setQuote(data);
+      setLastQuoteTime(Date.now());
     } catch (err) {
       setQuoteError(err instanceof Error ? err.message : "Quote failed");
       setQuote(null);
@@ -174,6 +227,7 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
     }
   }, []);
 
+  // Auto-refresh quote every 15s
   useEffect(() => {
     if (parsedFrom <= 0 || fromCurrency === toCurrency) {
       setQuote(null);
@@ -185,45 +239,56 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
     return () => clearTimeout(timer);
   }, [parsedFrom, fromCurrency, toCurrency, fetchQuote]);
 
-  // ── Countdown timer for shift deposit ─────────────────────────────────────
   useEffect(() => {
-    if (step !== "depositing" || !shift?.expiresAt) return;
+    if (!quote || parsedFrom <= 0 || step !== "input") return;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((new Date(shift.expiresAt).getTime() - Date.now()) / 1000));
+      fetchQuote(fromCurrency, toCurrency, parsedFrom.toString());
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [quote, parsedFrom, fromCurrency, toCurrency, step, fetchQuote]);
+
+  // ── Countdown timer ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (step !== "depositing" || !swap?.expiresAt) return;
+    expiredRef.current = false;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((new Date(swap.expiresAt).getTime() - Date.now()) / 1000));
       setTimeLeft(remaining);
       if (remaining <= 0) {
+        expiredRef.current = true;
         setStep("error");
-        setSwapError("Shift expired");
+        setSwapError("Swap expired");
         clearInterval(interval);
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [step, shift?.expiresAt]);
+  }, [step, swap?.expiresAt]);
 
-  // ── Poll shift status ─────────────────────────────────────────────────────
+  // ── Poll swap status ────────────────────────────────────────────────────
   useEffect(() => {
-    if ((step !== "depositing" && step !== "processing") || !shift?.shiftId) return;
+    if ((step !== "depositing" && step !== "processing") || !swap?.swapId) return;
     const poll = setInterval(async () => {
+      if (expiredRef.current) return;
       try {
-        const res = await fetch(`/api/dashboard/swap/status?shiftId=${shift.shiftId}`);
+        const res = await fetch(`/api/dashboard/swap/status?swapId=${swap.swapId}&provider=${swap.provider}`);
         if (!res.ok) return;
         const data: StatusResponse = await res.json();
-        setShiftStatus(data);
-
-        if (data.status === "settling" || data.status === "review") {
+        if (expiredRef.current) return;
+        setSwapStatus(data);
+        if (data.status === "deposited" || data.status === "processing") {
           setStep("processing");
-        } else if (data.status === "settled") {
+        } else if (data.status === "complete") {
           setStep("complete");
           clearInterval(poll);
-        } else if (data.status === "refund" || data.status === "expired") {
+        } else if (data.status === "refunded" || data.status === "expired" || data.status === "failed") {
           setStep("error");
-          setSwapError(`Shift ${data.status}`);
+          setSwapError(`Swap ${data.status}`);
           clearInterval(poll);
         }
-      } catch { /* ignore polling errors */ }
+      } catch { /* ignore */ }
     }, 5000);
     return () => clearInterval(poll);
-  }, [step, shift?.shiftId]);
+  }, [step, swap?.swapId, swap?.provider]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -248,6 +313,13 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
     }
   }
 
+  function handleHalf() {
+    if (fromBalance > 0) {
+      const half = fromBalance / 2;
+      setFromAmount(inputInFiat ? (half * fiatPrice).toFixed(2) : half.toString());
+    }
+  }
+
   function toggleInputMode() {
     const val = parseFloat(fromAmount) || 0;
     if (val > 0 && fiatPrice > 0) {
@@ -262,8 +334,6 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
     setSwapError(null);
 
     try {
-      // Use user's own wallet address as settle address
-      // For now we pass a placeholder — the backend should resolve the user's deposit address
       const res = await fetch("/api/dashboard/swap/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -271,16 +341,17 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           quoteId: quote.quoteId,
           settleAddress: "self",
           toCurrency,
+          provider: quote.provider,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Shift creation failed");
+        throw new Error(data.error || "Swap execution failed");
       }
 
-      const data: ShiftResponse = await res.json();
-      setShift(data);
+      const data: SwapResponse = await res.json();
+      setSwap(data);
       setStep("depositing");
     } catch (err) {
       setSwapError(err instanceof Error ? err.message : "Swap failed");
@@ -289,9 +360,10 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
   }
 
   function resetSwap() {
+    expiredRef.current = false;
     setStep("input");
-    setShift(null);
-    setShiftStatus(null);
+    setSwap(null);
+    setSwapStatus(null);
     setSwapError(null);
     setQuote(null);
     setFromAmount("");
@@ -303,7 +375,9 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // ── Shift status view (depositing / processing / complete / error) ────────
+  const activeSlippage = customSlippage ? parseFloat(customSlippage) : slippage;
+
+  // ── Status views (depositing / processing / complete / error) ──────────
 
   if (step !== "input") {
     return (
@@ -311,8 +385,8 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
         <div
           ref={containerRef}
           className={cn(
-            "w-full rounded-2xl p-5",
-            onBack ? "bg-background" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
+            "w-full rounded-2xl",
+            onBack ? "bg-background p-5" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
           )}
         >
           {onBack && activePanel && onSwitchPanel && (
@@ -333,41 +407,37 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           {step === "confirming" && (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              <p className="text-sm text-muted">Creating shift...</p>
+              <p className="text-sm text-muted">Creating swap...</p>
             </div>
           )}
 
-          {/* Depositing — show deposit address */}
-          {step === "depositing" && shift && (
+          {/* Depositing */}
+          {step === "depositing" && swap && (
             <div className="space-y-4">
               <div className="text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1">
-                  Send exactly
-                </p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1">Send exactly</p>
                 <p className="font-mono text-2xl font-bold text-foreground">
-                  {shift.depositAmount} {fromCurrency}
+                  {swap.depositAmount} {fromCurrency}
                 </p>
               </div>
 
               <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                  To this address
-                </p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">To this address</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate font-mono text-xs text-foreground-secondary">
-                    {shift.depositAddress}
+                    {swap.depositAddress}
                   </code>
                   <button
-                    onClick={() => copyAddress(shift.depositAddress)}
+                    onClick={() => copyAddress(swap.depositAddress)}
                     className="shrink-0 rounded-lg border border-border bg-surface p-2 text-muted hover:text-foreground transition-colors"
                   >
                     {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
                 </div>
-                {shift.depositMemo && (
+                {swap.depositMemo && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted mb-1">Memo (required)</p>
-                    <code className="font-mono text-xs text-warning">{shift.depositMemo}</code>
+                    <code className="font-mono text-xs text-warning">{swap.depositMemo}</code>
                   </div>
                 )}
               </div>
@@ -388,7 +458,7 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
               <div className="flex items-center justify-between rounded-lg border border-border/50 bg-surface/30 px-3 py-2.5">
                 <span className="text-[11px] text-muted">You receive</span>
                 <span className="font-mono text-[11px] font-medium text-foreground-secondary">
-                  ~{shift.settleAmount} {toCurrency}
+                  ~{swap.settleAmount} {toCurrency}
                 </span>
               </div>
             </div>
@@ -397,12 +467,25 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           {/* Processing */}
           {step === "processing" && (
             <div className="flex flex-col items-center gap-4 py-8">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              <div className="relative">
+                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-primary/20" />
+                </div>
+              </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">Processing swap</p>
                 <p className="text-[11px] text-muted mt-1">
                   Deposit received, settling {toCurrency}...
                 </p>
+              </div>
+              {/* Progress steps */}
+              <div className="flex items-center gap-2 mt-2">
+                <StepDot active done label="Deposited" />
+                <div className="h-px w-8 bg-primary" />
+                <StepDot active done={false} label="Confirming" />
+                <div className="h-px w-8 bg-border" />
+                <StepDot active={false} done={false} label="Complete" />
               </div>
             </div>
           )}
@@ -410,18 +493,18 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           {/* Complete */}
           {step === "complete" && (
             <div className="flex flex-col items-center gap-4 py-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
-                <Check className="h-6 w-6 text-success" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+                <Check className="h-7 w-7 text-success" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">Swap complete</p>
-                <p className="font-mono text-lg font-bold text-foreground mt-1">
-                  +{shiftStatus?.settleAmount ?? shift?.settleAmount} {toCurrency}
+                <p className="font-mono text-xl font-bold text-foreground mt-1">
+                  +{swapStatus?.settleAmount ?? swap?.settleAmount} {toCurrency}
                 </p>
               </div>
-              {shiftStatus?.settleHash && (
+              {swapStatus?.settleHash && (
                 <a
-                  href={`#`}
+                  href="#"
                   className="flex items-center gap-1 text-[11px] text-primary hover:underline"
                 >
                   <ExternalLink className="h-3 w-3" />
@@ -440,8 +523,8 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           {/* Error */}
           {step === "error" && (
             <div className="flex flex-col items-center gap-4 py-8">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-error/15">
-                <AlertCircle className="h-6 w-6 text-error" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-error/15">
+                <AlertCircle className="h-7 w-7 text-error" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">Swap failed</p>
@@ -467,8 +550,8 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
       <div
         ref={containerRef}
         className={cn(
-          "w-full rounded-2xl p-5",
-          onBack ? "bg-background" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
+          "w-full rounded-2xl",
+          onBack ? "bg-background p-5" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
         )}
       >
         {/* Tab Bar */}
@@ -486,16 +569,75 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           </div>
         )}
 
-        {/* Header (standalone mode) */}
+        {/* Header */}
         {!onBack && (
           <div data-animate className="flex items-center justify-between mb-5">
             <div>
-              <h1 className="font-heading text-xl font-bold text-foreground">Exchange</h1>
-              <p className="text-[11px] text-muted">Swap via SideShift.ai</p>
+              <h1 className="font-heading text-xl font-bold text-foreground">Swap</h1>
+              <p className="text-[11px] text-muted">
+                {quote ? `via ${PROVIDER_LABELS[quote.provider]}` : "Best rate across DEXs"}
+              </p>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-muted hover:text-foreground hover:border-border-hover transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0">
-              <Zap className="h-3.5 w-3.5" />
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer",
+                showSettings
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-surface text-muted hover:text-foreground hover:border-border-hover"
+              )}
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div data-animate className="mb-4 rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Shield className="h-3.5 w-3.5 text-muted" />
+                <span className="text-[12px] font-medium text-foreground">Slippage Tolerance</span>
+              </div>
+              <span className="font-mono text-[11px] text-primary font-medium">{activeSlippage}%</span>
             </div>
+            <div className="flex items-center gap-2">
+              {SLIPPAGE_PRESETS.map((val) => (
+                <button
+                  key={val}
+                  onClick={() => { setSlippage(val); setCustomSlippage(""); }}
+                  className={cn(
+                    "flex-1 rounded-lg py-2 text-[12px] font-medium transition-all duration-200",
+                    slippage === val && !customSlippage
+                      ? "bg-primary text-white"
+                      : "border border-border bg-background text-muted hover:text-foreground"
+                  )}
+                >
+                  {val}%
+                </button>
+              ))}
+              <div className="flex flex-1 items-center rounded-lg border border-border bg-background px-2 py-1.5">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Custom"
+                  value={customSlippage}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^\d*\.?\d*$/.test(v)) setCustomSlippage(v);
+                  }}
+                  className="w-full bg-transparent text-[12px] font-medium text-foreground outline-none placeholder:text-muted tabular-nums"
+                />
+                <span className="text-[10px] text-muted ml-0.5">%</span>
+              </div>
+            </div>
+            {activeSlippage > 5 && (
+              <div className="flex items-center gap-1.5 text-warning">
+                <AlertCircle className="h-3 w-3" />
+                <span className="text-[10px]">High slippage. Transaction may be frontrun.</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -506,13 +648,19 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">You sell</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">You pay</span>
               <AmountModeToggle inFiat={inputInFiat} crypto={fromCurrency} onToggle={toggleInputMode} />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-muted tabular-nums">
-                Balance: {formatCryptoAmount(fromBalance)}
+                {formatCryptoAmount(fromBalance)}
               </span>
+              <button
+                onClick={handleHalf}
+                className="rounded-md bg-surface px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted hover:text-foreground hover:bg-border/50 transition-colors"
+              >
+                Half
+              </button>
               <button
                 onClick={handleMax}
                 className="rounded-md bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary hover:bg-primary/25 transition-colors"
@@ -536,13 +684,13 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
                     const v = e.target.value;
                     if (v === "" || /^\d*\.?\d*$/.test(v)) setFromAmount(v);
                   }}
-                  placeholder="0.00"
+                  placeholder="0"
                   className={cn("w-full bg-transparent font-mono font-bold text-foreground tabular-nums tracking-tight outline-none placeholder:text-muted/30", onBack ? "text-[22px]" : "text-[28px]")}
                 />
               </div>
               {rawInput > 0 && (
                 <p className="mt-0.5 font-mono text-[11px] text-muted tabular-nums">
-                  ≈{inputInFiat ? `${formatCryptoAmount(parsedFrom)} ${fromCurrency}` : formatFiat(rawInput * fromPrice)}
+                  {inputInFiat ? `${formatCryptoAmount(parsedFrom)} ${fromCurrency}` : `~${formatFiat(rawInput * fromPrice)}`}
                 </p>
               )}
             </div>
@@ -554,7 +702,6 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
             />
           </div>
 
-          {/* Warnings */}
           {insufficientBalance && (
             <div className="mt-2 flex items-center gap-1.5 text-error">
               <AlertCircle className="h-3 w-3" />
@@ -592,7 +739,7 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           className="rounded-xl border border-border bg-surface/50 p-4"
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">You buy</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">You receive</span>
             {quoteLoading && <Loader2 className="h-3 w-3 text-muted animate-spin" />}
           </div>
 
@@ -603,11 +750,11 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
                 onBack ? "text-[22px]" : "text-[28px]",
                 toAmount > 0 ? "text-foreground" : "text-muted/30"
               )}>
-                {toAmount > 0 ? formatCryptoAmount(toAmount) : "0.00"}
+                {toAmount > 0 ? formatCryptoAmount(toAmount) : "0"}
               </p>
               {toAmount > 0 && (
                 <p className="mt-0.5 font-mono text-[11px] text-muted tabular-nums">
-                  ≈{formatFiat(toUsd)}
+                  ~{formatFiat(toUsd)}
                 </p>
               )}
             </div>
@@ -620,39 +767,91 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           </div>
         </div>
 
-        {/* ── Details ── */}
-        <div data-animate className="mt-4 space-y-1.5">
-          {displayRate > 0 && (
-            <div className="flex items-center justify-between rounded-lg border border-border/50 bg-surface/30 px-3 py-2.5">
-              <div className="flex items-center gap-1.5">
+        {/* ── Details (collapsible, Jupiter-style) ── */}
+        {quote && parsedFrom > 0 && (
+          <div data-animate className="mt-3">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-surface/30 px-3 py-2.5 transition-colors hover:bg-surface/50"
+            >
+              <div className="flex items-center gap-2">
                 <RefreshCw className={cn("h-3 w-3 text-muted", quoteLoading && "animate-spin")} />
-                <span className="text-[11px] text-muted">Rate{quote ? "" : " (est.)"}</span>
+                <span className="font-mono text-[11px] font-medium text-foreground-secondary tabular-nums">
+                  1 {fromCurrency} = {displayRate >= 1 ? displayRate.toFixed(4) : displayRate.toFixed(8)} {toCurrency}
+                </span>
               </div>
-              <span className="font-mono text-[11px] font-medium text-foreground-secondary tabular-nums">
-                1 {fromCurrency} = {displayRate >= 1 ? displayRate.toFixed(4) : displayRate.toFixed(8)} {toCurrency}
-              </span>
-            </div>
-          )}
+              {showDetails ? <ChevronUp className="h-3 w-3 text-muted" /> : <ChevronDown className="h-3 w-3 text-muted" />}
+            </button>
 
-          {quoteError && (
-            <div className="flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/5 px-3 py-2.5">
-              <AlertCircle className="h-3 w-3 text-error" />
-              <span className="text-[10px] text-error">{quoteError}</span>
-            </div>
-          )}
+            {showDetails && (
+              <div className="mt-1 space-y-1">
+                {/* Price Impact */}
+                <DetailRow
+                  label="Price Impact"
+                  value={
+                    <span className={cn("font-mono", priceImpact > 3 ? "text-error" : priceImpact > 1 ? "text-warning" : "text-success")}>
+                      {priceImpact > 0 ? `${priceImpact.toFixed(2)}%` : "<0.01%"}
+                    </span>
+                  }
+                />
 
-          {minDeposit > 0 && maxDeposit > 0 && (
-            <div className="flex items-center justify-between rounded-lg border border-border/50 bg-surface/30 px-3 py-2.5">
-              <span className="text-[11px] text-muted">Limits</span>
-              <span className="font-mono text-[11px] text-foreground-secondary tabular-nums">
-                {formatCryptoAmount(minDeposit)} – {formatCryptoAmount(maxDeposit)} {fromCurrency}
-              </span>
-            </div>
-          )}
-        </div>
+                {/* Slippage */}
+                <DetailRow label="Max Slippage" value={`${activeSlippage}%`} />
+
+                {/* Minimum received */}
+                <DetailRow
+                  label="Minimum Received"
+                  value={`${formatCryptoAmount(toAmount * (1 - activeSlippage / 100))} ${toCurrency}`}
+                />
+
+                {/* Route */}
+                <DetailRow
+                  label="Route"
+                  value={
+                    <span className="flex items-center gap-1">
+                      <Route className="h-3 w-3 text-muted" />
+                      {PROVIDER_LABELS[quote.provider]}
+                      <span className="text-muted">({PROVIDER_TYPES[quote.provider]})</span>
+                    </span>
+                  }
+                />
+
+                {/* Fees */}
+                {quote.fees && (
+                  <>
+                    <DetailRow
+                      label="Network Fee"
+                      value={quote.fees.network !== "0" ? `$${quote.fees.network}` : "Included"}
+                    />
+                    <DetailRow
+                      label="Protocol Fee"
+                      value={quote.fees.protocol !== "0" ? `$${quote.fees.protocol}` : "Free"}
+                    />
+                  </>
+                )}
+
+                {/* Limits */}
+                {minDeposit > 0 && (
+                  <DetailRow
+                    label="Limits"
+                    value={`${formatCryptoAmount(minDeposit)}${maxDeposit > 0 ? ` – ${formatCryptoAmount(maxDeposit)}` : "+"} ${fromCurrency}`}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quote error */}
+        {quoteError && (
+          <div data-animate className="mt-3 flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/5 px-3 py-2.5">
+            <AlertCircle className="h-3 w-3 text-error" />
+            <span className="text-[10px] text-error">{quoteError}</span>
+          </div>
+        )}
 
         {/* ── Swap Button ── */}
-        <div data-animate className="mt-6">
+        <div data-animate className="mt-5">
           <button
             disabled={!canSwap}
             onClick={handleSwap}
@@ -668,18 +867,45 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           >
             {quoteLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+            ) : canSwap ? (
               <ArrowDownUp className="h-4 w-4" />
-            )}
-            {quoteLoading ? "Getting quote..." : "Swap"}
+            ) : null}
+            {getButtonLabel()}
           </button>
         </div>
 
-        {/* SideShift attribution */}
-        <p className="mt-3 text-center text-[9px] text-muted/50">
-          Powered by SideShift.ai
+        {/* Provider attribution */}
+        <p data-animate className="mt-3 text-center text-[9px] text-muted/50">
+          {quote
+            ? `Powered by ${PROVIDER_LABELS[quote.provider]} \u00b7 Auto-refreshes every 15s`
+            : "Smart routing across THORChain, 1inch & SideShift"}
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border/50 bg-surface/30 px-3 py-2">
+      <span className="text-[11px] text-muted">{label}</span>
+      <span className="font-mono text-[11px] text-foreground-secondary">{value}</span>
+    </div>
+  );
+}
+
+function StepDot({ active, done, label }: { active: boolean; done: boolean; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className={cn(
+        "h-3 w-3 rounded-full border-2 transition-colors",
+        done ? "border-primary bg-primary" : active ? "border-primary bg-transparent" : "border-border bg-transparent"
+      )}>
+        {done && <Check className="h-2 w-2 text-white" />}
+      </div>
+      <span className={cn("text-[8px]", active ? "text-foreground" : "text-muted")}>{label}</span>
     </div>
   );
 }

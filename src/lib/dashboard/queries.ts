@@ -11,71 +11,30 @@ export async function getOverviewStats(userId: string) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  const [
-    totalRevenue,
-    todayRevenue,
-    weekRevenue,
-    monthRevenue,
-    lastMonthRevenue,
-    monthPayments,
-    lastMonthPayments,
-    totalPayments,
-    paidPayments,
-    pendingPayments,
-    pendingAmount,
-    topCurrencies,
-  ] = await Promise.all([
-    db.payment.aggregate({
-      where: { userId, status: "paid" },
-      _sum: { amount: true },
-    }),
-    db.payment.aggregate({
-      where: { userId, status: "paid", createdAt: { gte: startOfToday } },
-      _sum: { amount: true },
-    }),
-    db.payment.aggregate({
-      where: { userId, status: "paid", createdAt: { gte: startOfWeek } },
-      _sum: { amount: true },
-    }),
-    db.payment.aggregate({
-      where: { userId, status: "paid", createdAt: { gte: startOfMonth } },
-      _sum: { amount: true },
-    }),
-    db.payment.aggregate({
-      where: {
-        userId,
-        status: "paid",
-        createdAt: { gte: startOfLastMonth, lt: startOfMonth },
-      },
-      _sum: { amount: true },
-    }),
-    db.payment.count({
-      where: { userId, createdAt: { gte: startOfMonth } },
-    }),
-    db.payment.count({
-      where: { userId, createdAt: { gte: startOfLastMonth, lt: startOfMonth } },
+  // Fetch all user payments once and compute stats in JS
+  // (Prisma driver adapters don't support aggregate/groupBy)
+  const [allPayments, totalPayments, pendingPayments] = await Promise.all([
+    db.payment.findMany({
+      where: { userId },
+      select: { amount: true, status: true, payCurrency: true, createdAt: true },
     }),
     db.payment.count({ where: { userId } }),
-    db.payment.count({ where: { userId, status: "paid" } }),
     db.payment.count({ where: { userId, status: { in: ["pending", "confirming"] } } }),
-    db.payment.aggregate({
-      where: { userId, status: { in: ["pending", "confirming"] } },
-      _sum: { amount: true },
-    }),
-    db.payment.groupBy({
-      by: ["payCurrency"],
-      where: { userId, status: "paid", payCurrency: { not: null } },
-      _sum: { amount: true },
-      orderBy: { _sum: { amount: "desc" } },
-      take: 5,
-    }),
   ]);
 
-  const totalRev = totalRevenue._sum.amount || 0;
-  const todayRev = todayRevenue._sum.amount || 0;
-  const weekRev = weekRevenue._sum.amount || 0;
-  const monthRev = monthRevenue._sum.amount || 0;
-  const lastMonthRev = lastMonthRevenue._sum.amount || 0;
+  const paid = allPayments.filter((p) => p.status === "paid");
+  const pending = allPayments.filter((p) => p.status === "pending" || p.status === "confirming");
+
+  const totalRev = paid.reduce((s, p) => s + p.amount, 0);
+  const todayRev = paid.filter((p) => p.createdAt >= startOfToday).reduce((s, p) => s + p.amount, 0);
+  const weekRev = paid.filter((p) => p.createdAt >= startOfWeek).reduce((s, p) => s + p.amount, 0);
+  const monthRev = paid.filter((p) => p.createdAt >= startOfMonth).reduce((s, p) => s + p.amount, 0);
+  const lastMonthRev = paid.filter((p) => p.createdAt >= startOfLastMonth && p.createdAt < startOfMonth).reduce((s, p) => s + p.amount, 0);
+
+  const monthPayments = allPayments.filter((p) => p.createdAt >= startOfMonth).length;
+  const lastMonthPayments = allPayments.filter((p) => p.createdAt >= startOfLastMonth && p.createdAt < startOfMonth).length;
+  const paidPayments = paid.length;
+
   const revenueChange = lastMonthRev > 0
     ? Math.round(((monthRev - lastMonthRev) / lastMonthRev) * 100)
     : monthRev > 0 ? 100 : 0;
@@ -90,20 +49,30 @@ export async function getOverviewStats(userId: string) {
 
   const avgPayment = paidPayments > 0 ? Math.round(totalRev / paidPayments) : 0;
 
-  // Compute avg payment change (this month vs last month)
   const monthPaid = monthPayments > 0 ? monthRev / monthPayments : 0;
   const lastMonthPaid = lastMonthPayments > 0 ? lastMonthRev / lastMonthPayments : 0;
   const avgChange = lastMonthPaid > 0
     ? Math.round(((monthPaid - lastMonthPaid) / lastMonthPaid) * 100)
     : monthPaid > 0 ? 100 : 0;
 
-  // Payment method breakdown as percentages
+  // Payment method breakdown
+  const currencyMap = new Map<string, number>();
+  for (const p of paid) {
+    if (p.payCurrency) {
+      currencyMap.set(p.payCurrency, (currencyMap.get(p.payCurrency) || 0) + p.amount);
+    }
+  }
   const paymentMethods = totalRev > 0
-    ? topCurrencies.map((c) => ({
-        currency: c.payCurrency!,
-        percentage: Math.round(((c._sum.amount || 0) / totalRev) * 1000) / 10,
-      }))
+    ? Array.from(currencyMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([currency, amount]) => ({
+          currency,
+          percentage: Math.round((amount / totalRev) * 1000) / 10,
+        }))
     : [];
+
+  const pendingPayout = pending.reduce((s, p) => s + p.amount, 0);
 
   return {
     totalRevenue: totalRev,
@@ -118,7 +87,7 @@ export async function getOverviewStats(userId: string) {
     avgPayment,
     avgChange,
     pendingCount: pendingPayments,
-    pendingPayout: pendingAmount._sum.amount || 0,
+    pendingPayout,
     paymentMethods,
   };
 }
@@ -439,6 +408,232 @@ export async function getDailyPaymentCounts(
   return Array.from(byDay.entries())
     .map(([date, data]) => ({ date, ...data }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Get success / failure rate KPIs for analytics.
+ */
+export async function getSuccessMetrics(
+  userId: string,
+  startDate: Date,
+  endDate: Date
+) {
+  const where = { userId, createdAt: { gte: startDate, lte: endDate } };
+
+  const [total, paid, failed, expired, refunded, underpaid] = await Promise.all([
+    db.payment.count({ where }),
+    db.payment.count({ where: { ...where, status: "paid" } }),
+    db.payment.count({ where: { ...where, status: "failed" } }),
+    db.payment.count({ where: { ...where, status: "expired" } }),
+    db.payment.count({ where: { ...where, status: "refunded" } }),
+    db.payment.count({ where: { ...where, status: "underpaid" } }),
+  ]);
+
+  const successRate = total > 0 ? Math.round((paid / total) * 1000) / 10 : 0;
+  const failureRate = total > 0 ? Math.round((failed / total) * 1000) / 10 : 0;
+  const expiredRate = total > 0 ? Math.round((expired / total) * 1000) / 10 : 0;
+  const refundRate = total > 0 ? Math.round((refunded / total) * 1000) / 10 : 0;
+  const underpaidRate = total > 0 ? Math.round((underpaid / total) * 1000) / 10 : 0;
+
+  return {
+    total, paid, failed, expired, refunded, underpaid,
+    successRate, failureRate, expiredRate, refundRate, underpaidRate,
+  };
+}
+
+/**
+ * Get payment volume comparison: current period vs previous period of same length.
+ */
+export async function getPeriodComparison(
+  userId: string,
+  startDate: Date,
+  endDate: Date
+) {
+  const durationMs = endDate.getTime() - startDate.getTime();
+  const prevStart = new Date(startDate.getTime() - durationMs);
+  const prevEnd = new Date(startDate);
+
+  // Use findMany instead of aggregate (driver adapter compat)
+  const [currentPayments, previousPayments] = await Promise.all([
+    db.payment.findMany({
+      where: { userId, status: "paid", createdAt: { gte: startDate, lte: endDate } },
+      select: { amount: true },
+    }),
+    db.payment.findMany({
+      where: { userId, status: "paid", createdAt: { gte: prevStart, lte: prevEnd } },
+      select: { amount: true },
+    }),
+  ]);
+
+  const curVol = currentPayments.reduce((s, p) => s + p.amount, 0);
+  const prevVol = previousPayments.reduce((s, p) => s + p.amount, 0);
+  const currentCount = currentPayments.length;
+  const previousCount = previousPayments.length;
+  const volumeChange = prevVol > 0 ? Math.round(((curVol - prevVol) / prevVol) * 1000) / 10 : (curVol > 0 ? 100 : 0);
+  const countChange = previousCount > 0 ? Math.round(((currentCount - previousCount) / previousCount) * 1000) / 10 : (currentCount > 0 ? 100 : 0);
+
+  return {
+    currentVolume: curVol,
+    previousVolume: prevVol,
+    volumeChange,
+    currentCount,
+    previousCount,
+    countChange,
+  };
+}
+
+/**
+ * Get payment amount distribution (histogram buckets).
+ */
+export async function getAmountDistribution(
+  userId: string,
+  startDate: Date,
+  endDate: Date
+) {
+  const payments = await db.payment.findMany({
+    where: { userId, status: "paid", createdAt: { gte: startDate, lte: endDate } },
+    select: { amount: true },
+  });
+
+  const buckets = [
+    { label: "<$10", min: 0, max: 10, count: 0 },
+    { label: "$10–50", min: 10, max: 50, count: 0 },
+    { label: "$50–100", min: 50, max: 100, count: 0 },
+    { label: "$100–500", min: 100, max: 500, count: 0 },
+    { label: "$500–1K", min: 500, max: 1000, count: 0 },
+    { label: "$1K–5K", min: 1000, max: 5000, count: 0 },
+    { label: "$5K+", min: 5000, max: Infinity, count: 0 },
+  ];
+
+  for (const p of payments) {
+    const bucket = buckets.find((b) => p.amount >= b.min && p.amount < b.max);
+    if (bucket) bucket.count++;
+  }
+
+  return buckets.map(({ label, count }) => ({ label, count }));
+}
+
+/**
+ * Get top currencies ranked by volume with percentage.
+ */
+export async function getTopCurrencies(
+  userId: string,
+  startDate: Date,
+  endDate: Date,
+  limit = 8
+) {
+  const payments = await db.payment.findMany({
+    where: { userId, status: "paid", payCurrency: { not: null }, createdAt: { gte: startDate, lte: endDate } },
+    select: { payCurrency: true, amount: true },
+  });
+
+  const byKey = new Map<string, { volume: number; count: number }>();
+  let totalVolume = 0;
+
+  for (const p of payments) {
+    const key = p.payCurrency ?? "unknown";
+    const existing = byKey.get(key) || { volume: 0, count: 0 };
+    existing.volume += p.amount;
+    existing.count++;
+    byKey.set(key, existing);
+    totalVolume += p.amount;
+  }
+
+  return Array.from(byKey.entries())
+    .map(([currency, data]) => ({
+      currency,
+      ...data,
+      percentage: totalVolume > 0 ? Math.round((data.volume / totalVolume) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.volume - a.volume)
+    .slice(0, limit);
+}
+
+/**
+ * Get hourly activity heatmap (hour of day vs day of week).
+ */
+export async function getHourlyHeatmap(
+  userId: string,
+  startDate: Date,
+  endDate: Date
+) {
+  const payments = await db.payment.findMany({
+    where: { userId, createdAt: { gte: startDate, lte: endDate } },
+    select: { createdAt: true },
+  });
+
+  // 7 days x 24 hours grid
+  const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+
+  for (const p of payments) {
+    const day = p.createdAt.getDay(); // 0=Sun
+    const hour = p.createdAt.getHours();
+    grid[day][hour]++;
+  }
+
+  return grid;
+}
+
+/**
+ * Get 10-point sparkline data for dashboard overview KPI cards.
+ * Returns daily payment counts, conversion rates, avg payment values,
+ * and active link counts over the last 10 days.
+ */
+export async function getKpiSparklines(userId: string) {
+  const days = 10;
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(start.getDate() - days);
+
+  const payments = await db.payment.findMany({
+    where: { userId, createdAt: { gte: start } },
+    select: { createdAt: true, status: true, amount: true },
+  });
+
+  const pending = await db.payment.findMany({
+    where: { userId, status: { in: ["pending", "confirming"] } },
+    select: { createdAt: true },
+  });
+
+  // Bucket into days
+  const buckets = Array.from({ length: days }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (days - 1 - i));
+    return d.toISOString().split("T")[0];
+  });
+
+  const paymentCounts: number[] = [];
+  const conversionRates: number[] = [];
+  const avgPayments: number[] = [];
+  const activeLinkCounts: number[] = [];
+
+  for (const day of buckets) {
+    const dayPayments = payments.filter(
+      (p) => p.createdAt.toISOString().split("T")[0] === day
+    );
+    const total = dayPayments.length;
+    const paid = dayPayments.filter((p) => p.status === "paid");
+
+    paymentCounts.push(total);
+    conversionRates.push(
+      total > 0 ? Math.round((paid.length / total) * 100) : 0
+    );
+    avgPayments.push(
+      paid.length > 0
+        ? Math.round(paid.reduce((s, p) => s + p.amount, 0) / paid.length)
+        : 0
+    );
+
+    const dayDate = new Date(day);
+    const nextDay = new Date(day);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const activeOnDay = pending.filter(
+      (p) => p.createdAt <= nextDay
+    ).length;
+    activeLinkCounts.push(activeOnDay);
+  }
+
+  return { paymentCounts, conversionRates, avgPayments, activeLinkCounts };
 }
 
 /**

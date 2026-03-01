@@ -15,7 +15,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { Clock, MousePointerClick } from "lucide-react";
+import { Clock, MousePointerClick, Trophy, LayoutGrid, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -45,12 +45,27 @@ interface DailyCountsProps {
   data: { date: string; created: number; paid: number }[];
 }
 
+interface AmountBucket {
+  label: string;
+  count: number;
+}
+
+interface TopCurrency {
+  currency: string;
+  volume: number;
+  count: number;
+  percentage: number;
+}
+
 export interface ExtendedAnalyticsProps {
   funnel: ConversionFunnelProps;
   chainDistribution: ChainDistributionProps["chains"];
   weekdayRevenue: WeekdayRevenueProps["weekdays"];
   avgPaymentTime: AvgPaymentTimeProps;
   dailyCounts: DailyCountsProps["data"];
+  amountDistribution: AmountBucket[];
+  topCurrencies: TopCurrency[];
+  hourlyHeatmap: number[][];
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +102,8 @@ const CHAIN_LABELS: Record<string, string> = {
   bitcoin: "Bitcoin",
   tron: "Tron",
   monero: "Monero",
+  litecoin: "Litecoin",
+  dogecoin: "Dogecoin",
 };
 
 const CHAIN_COLORS: Record<string, string> = {
@@ -95,7 +112,21 @@ const CHAIN_COLORS: Record<string, string> = {
   bitcoin: "#F7931A",
   tron: "#FF0013",
   monero: "#FF6600",
+  litecoin: "#345D9D",
+  dogecoin: "#C2A633",
 };
+
+const CRYPTO_COLORS: Record<string, string> = {
+  BTC: "#F7931A", ETH: "#627EEA", SOL: "#9945FF", XMR: "#FF6600",
+  TRX: "#FF0013", BNB: "#F3BA2F", USDT: "#26A17B", USDC: "#2775CA",
+  LTC: "#345D9D", DOGE: "#C2A633", AVAX: "#E84142", ARB: "#28A0F0",
+  OP: "#FF0420", MATIC: "#8247E5",
+};
+
+const HEATMAP_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const HEATMAP_HOURS = Array.from({ length: 24 }, (_, i) =>
+  i === 0 ? "12a" : i < 12 ? `${i}a` : i === 12 ? "12p" : `${i - 12}p`
+);
 
 // ---------------------------------------------------------------------------
 // Tooltips
@@ -149,6 +180,19 @@ function ChainTooltip({ active, payload }: any) {
   );
 }
 
+function BucketTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rounded-lg border border-border bg-elevated p-3 shadow-lg">
+      <p className="text-xs font-medium text-foreground">{d.label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold text-foreground">
+        {d.count} payment{d.count !== 1 ? "s" : ""}
+      </p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Skeleton
 // ---------------------------------------------------------------------------
@@ -156,12 +200,12 @@ function ChainTooltip({ active, payload }: any) {
 function ExtendedSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {[0, 1, 2, 3, 4].map((i) => (
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
         <div
           key={i}
           className={cn(
             "rounded-xl border border-border bg-background p-5",
-            i === 4 && "lg:col-span-2"
+            (i === 6 || i === 7) && "lg:col-span-2"
           )}
         >
           <div className="mb-2 h-4 w-32 animate-pulse rounded bg-border" />
@@ -199,6 +243,9 @@ function ExtendedContent({
   weekdayRevenue,
   avgPaymentTime,
   dailyCounts,
+  amountDistribution,
+  topCurrencies,
+  hourlyHeatmap,
 }: ExtendedAnalyticsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -215,7 +262,7 @@ function ExtendedContent({
           opacity: 1,
           y: 0,
           duration: 0.5,
-          stagger: 0.1,
+          stagger: 0.08,
           ease: "power3.out",
         }
       );
@@ -227,12 +274,14 @@ function ExtendedContent({
   const hasChains = chainDistribution.length > 0;
   const hasWeekday = weekdayRevenue.some((d) => d.revenue > 0);
   const hasDailyCounts = dailyCounts.length > 0;
+  const hasDistribution = amountDistribution.some((b) => b.count > 0);
+  const hasTopCurrencies = topCurrencies.length > 0;
+  const heatmapMax = Math.max(1, ...hourlyHeatmap.flat());
+  const hasHeatmap = hourlyHeatmap.flat().some((v) => v > 0);
 
   return (
     <div ref={containerRef} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* ---------------------------------------------------------------
-          Conversion Funnel — full section
-          --------------------------------------------------------------- */}
+      {/* ── Conversion Funnel ── */}
       <div
         data-ext-card
         className="rounded-xl border border-border bg-background p-5 opacity-0"
@@ -241,7 +290,6 @@ function ExtendedContent({
         <p className="mt-0.5 text-xs text-muted">
           Payment flow: Created to Paid
         </p>
-
         {hasFunnel ? (
           <div className="mt-5">
             <FunnelVisualization
@@ -255,20 +303,13 @@ function ExtendedContent({
         )}
       </div>
 
-      {/* ---------------------------------------------------------------
-          Chain Distribution — bar chart
-          --------------------------------------------------------------- */}
+      {/* ── Chain Distribution ── */}
       <div
         data-ext-card
         className="rounded-xl border border-border bg-background p-5 opacity-0"
       >
-        <p className="text-sm font-medium text-foreground">
-          Chain Distribution
-        </p>
-        <p className="mt-0.5 text-xs text-muted">
-          Payment volume by blockchain
-        </p>
-
+        <p className="text-sm font-medium text-foreground">Chain Distribution</p>
+        <p className="mt-0.5 text-xs text-muted">Payment volume by blockchain</p>
         {hasChains ? (
           <div className="mt-4 h-52">
             <ResponsiveContainer width="100%" height="100%">
@@ -315,20 +356,13 @@ function ExtendedContent({
         )}
       </div>
 
-      {/* ---------------------------------------------------------------
-          Revenue by Day of Week — bar chart
-          --------------------------------------------------------------- */}
+      {/* ── Revenue by Weekday ── */}
       <div
         data-ext-card
         className="rounded-xl border border-border bg-background p-5 opacity-0"
       >
-        <p className="text-sm font-medium text-foreground">
-          Revenue by Weekday
-        </p>
-        <p className="mt-0.5 text-xs text-muted">
-          Which days generate the most revenue
-        </p>
-
+        <p className="text-sm font-medium text-foreground">Revenue by Weekday</p>
+        <p className="mt-0.5 text-xs text-muted">Which days generate the most revenue</p>
         {hasWeekday ? (
           <div className="mt-4 h-52">
             <ResponsiveContainer width="100%" height="100%">
@@ -336,37 +370,11 @@ function ExtendedContent({
                 data={weekdayRevenue}
                 margin={{ top: 4, right: 4, bottom: 0, left: -12 }}
               >
-                <CartesianGrid
-                  horizontal
-                  vertical={false}
-                  stroke="var(--border)"
-                  strokeOpacity={0.3}
-                />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "#737373" }}
-                  tickMargin={8}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "#737373" }}
-                  tickFormatter={(v) => formatDollar(v)}
-                  tickMargin={4}
-                />
-                <RechartsTooltip
-                  content={<WeekdayTooltip />}
-                  cursor={{ fill: "var(--border)", opacity: 0.15 }}
-                />
-                <Bar
-                  dataKey="revenue"
-                  fill="var(--primary)"
-                  radius={[3, 3, 0, 0]}
-                  barSize={28}
-                  opacity={0.85}
-                />
+                <CartesianGrid horizontal vertical={false} stroke="var(--border)" strokeOpacity={0.3} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#737373" }} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#737373" }} tickFormatter={(v) => formatDollar(v)} tickMargin={4} />
+                <RechartsTooltip content={<WeekdayTooltip />} cursor={{ fill: "var(--border)", opacity: 0.15 }} />
+                <Bar dataKey="revenue" fill="var(--primary)" radius={[3, 3, 0, 0]} barSize={28} opacity={0.85} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -375,29 +383,20 @@ function ExtendedContent({
         )}
       </div>
 
-      {/* ---------------------------------------------------------------
-          Average Payment Time — stat card
-          --------------------------------------------------------------- */}
+      {/* ── Average Payment Time ── */}
       <div
         data-ext-card
         className="rounded-xl border border-border bg-background p-5 opacity-0"
       >
-        <p className="text-sm font-medium text-foreground">
-          Average Payment Time
-        </p>
-        <p className="mt-0.5 text-xs text-muted">
-          From creation to completion
-        </p>
-
+        <p className="text-sm font-medium text-foreground">Average Payment Time</p>
+        <p className="mt-0.5 text-xs text-muted">From creation to completion</p>
         <div className="mt-6 flex items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-warning-muted">
             <Clock className="h-6 w-6 text-warning" />
           </div>
           <div>
             <p className="font-heading text-3xl font-semibold tabular-nums text-foreground">
-              {avgPaymentTime.count > 0
-                ? formatTimeHuman(avgPaymentTime.avgMinutes)
-                : "--"}
+              {avgPaymentTime.count > 0 ? formatTimeHuman(avgPaymentTime.avgMinutes) : "--"}
             </p>
             <p className="text-xs text-muted">
               {avgPaymentTime.count > 0
@@ -406,8 +405,6 @@ function ExtendedContent({
             </p>
           </div>
         </div>
-
-        {/* Time context bar */}
         {avgPaymentTime.count > 0 && (
           <div className="mt-5">
             <div className="flex items-center justify-between text-[11px] text-muted">
@@ -419,13 +416,7 @@ function ExtendedContent({
               <div
                 className="h-full rounded-full bg-warning transition-all duration-700"
                 style={{
-                  width: `${Math.min(
-                    Math.max(
-                      (avgPaymentTime.avgMinutes / (24 * 60)) * 100,
-                      3
-                    ),
-                    100
-                  )}%`,
+                  width: `${Math.min(Math.max((avgPaymentTime.avgMinutes / (24 * 60)) * 100, 3), 100)}%`,
                 }}
               />
             </div>
@@ -433,9 +424,96 @@ function ExtendedContent({
         )}
       </div>
 
-      {/* ---------------------------------------------------------------
-          Daily Payment Activity — line chart (full width)
-          --------------------------------------------------------------- */}
+      {/* ── Payment Amount Distribution (Histogram) ── */}
+      <div
+        data-ext-card
+        className="rounded-xl border border-border bg-background p-5 opacity-0"
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-muted">
+            <BarChart3 className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Payment Sizes</p>
+            <p className="text-xs text-muted">Distribution of payment amounts</p>
+          </div>
+        </div>
+        {hasDistribution ? (
+          <div className="mt-4 h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={amountDistribution}
+                margin={{ top: 4, right: 4, bottom: 0, left: -12 }}
+              >
+                <CartesianGrid horizontal vertical={false} stroke="var(--border)" strokeOpacity={0.3} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#737373" }} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#737373" }} tickMargin={4} allowDecimals={false} />
+                <RechartsTooltip content={<BucketTooltip />} cursor={{ fill: "var(--border)", opacity: 0.15 }} />
+                <Bar dataKey="count" fill="#FF6600" radius={[3, 3, 0, 0]} barSize={24} opacity={0.8} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <EmptyChart message="No distribution data" />
+        )}
+      </div>
+
+      {/* ── Top Currencies Table ── */}
+      <div
+        data-ext-card
+        className="rounded-xl border border-border bg-background p-5 opacity-0"
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success-muted">
+            <Trophy className="h-4 w-4 text-success" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Top Currencies</p>
+            <p className="text-xs text-muted">Ranked by volume</p>
+          </div>
+        </div>
+        {hasTopCurrencies ? (
+          <div className="mt-4 space-y-2">
+            {topCurrencies.map((c, i) => {
+              const color = CRYPTO_COLORS[c.currency] ?? "#737373";
+              return (
+                <div key={c.currency} className="flex items-center gap-3">
+                  <span className="w-5 text-right font-mono text-[10px] text-muted tabular-nums">
+                    {i + 1}
+                  </span>
+                  <div
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="w-12 text-xs font-medium text-foreground">{c.currency}</span>
+                  <div className="flex-1">
+                    <div className="h-5 overflow-hidden rounded bg-surface">
+                      <div
+                        className="h-full rounded transition-all duration-700"
+                        style={{
+                          width: `${Math.max(c.percentage, 4)}%`,
+                          backgroundColor: color,
+                          opacity: 0.7,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span className="w-16 text-right font-mono text-[11px] font-medium text-foreground tabular-nums">
+                    {formatDollar(c.volume)}
+                  </span>
+                  <span className="w-10 text-right font-mono text-[10px] text-muted tabular-nums">
+                    {c.percentage}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyChart message="No currency data" />
+        )}
+      </div>
+
+      {/* ── Daily Activity ── */}
       <div
         data-ext-card
         className="rounded-xl border border-border bg-background p-5 opacity-0 lg:col-span-2"
@@ -445,120 +523,32 @@ function ExtendedContent({
             <MousePointerClick className="h-4 w-4 text-info" />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">
-              Daily Activity
-            </p>
-            <p className="text-xs text-muted">
-              Payments created vs completed over time
-            </p>
+            <p className="text-sm font-medium text-foreground">Daily Activity</p>
+            <p className="text-xs text-muted">Payments created vs completed over time</p>
           </div>
         </div>
-
         {hasDailyCounts ? (
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={dailyCounts}
-                margin={{ top: 4, right: 4, bottom: 0, left: -12 }}
-              >
+              <AreaChart data={dailyCounts} margin={{ top: 4, right: 4, bottom: 0, left: -12 }}>
                 <defs>
-                  <linearGradient
-                    id="createdGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor="var(--info)"
-                      stopOpacity={0.1}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="var(--info)"
-                      stopOpacity={0}
-                    />
+                  <linearGradient id="createdGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--info)" stopOpacity={0.1} />
+                    <stop offset="100%" stopColor="var(--info)" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient
-                    id="paidGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor="var(--success)"
-                      stopOpacity={0.1}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="var(--success)"
-                      stopOpacity={0}
-                    />
+                  <linearGradient id="paidGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--success)" stopOpacity={0.1} />
+                    <stop offset="100%" stopColor="var(--success)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid
-                  horizontal
-                  vertical={false}
-                  stroke="var(--border)"
-                  strokeOpacity={0.3}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "#737373" }}
-                  tickFormatter={formatDate}
-                  tickMargin={8}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "#737373" }}
-                  tickMargin={4}
-                  allowDecimals={false}
-                />
-                <RechartsTooltip
-                  content={<DailyCountTooltip />}
-                  cursor={{
-                    stroke: "var(--border)",
-                    strokeDasharray: "4 4",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="created"
-                  stroke="var(--info)"
-                  strokeWidth={2}
-                  fill="url(#createdGradient)"
-                  dot={false}
-                  activeDot={{
-                    r: 3,
-                    fill: "var(--info)",
-                    stroke: "var(--elevated)",
-                    strokeWidth: 2,
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="paid"
-                  stroke="var(--success)"
-                  strokeWidth={2}
-                  fill="url(#paidGradient)"
-                  dot={false}
-                  activeDot={{
-                    r: 3,
-                    fill: "var(--success)",
-                    stroke: "var(--elevated)",
-                    strokeWidth: 2,
-                  }}
-                />
+                <CartesianGrid horizontal vertical={false} stroke="var(--border)" strokeOpacity={0.3} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#737373" }} tickFormatter={formatDate} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#737373" }} tickMargin={4} allowDecimals={false} />
+                <RechartsTooltip content={<DailyCountTooltip />} cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }} />
+                <Area type="monotone" dataKey="created" stroke="var(--info)" strokeWidth={2} fill="url(#createdGradient)" dot={false} activeDot={{ r: 3, fill: "var(--info)", stroke: "var(--elevated)", strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="paid" stroke="var(--success)" strokeWidth={2} fill="url(#paidGradient)" dot={false} activeDot={{ r: 3, fill: "var(--success)", stroke: "var(--elevated)", strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
-
-            {/* Legend */}
             <div className="mt-3 flex items-center gap-5">
               <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-info" />
@@ -574,12 +564,89 @@ function ExtendedContent({
           <EmptyChart message="No activity data for this period" />
         )}
       </div>
+
+      {/* ── Activity Heatmap ── */}
+      <div
+        data-ext-card
+        className="rounded-xl border border-border bg-background p-5 opacity-0 lg:col-span-2"
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning-muted">
+            <LayoutGrid className="h-4 w-4 text-warning" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Activity Heatmap</p>
+            <p className="text-xs text-muted">Payment frequency by hour and day of week</p>
+          </div>
+        </div>
+        {hasHeatmap ? (
+          <div className="mt-4 overflow-x-auto">
+            <div className="min-w-[600px]">
+              {/* Hour labels */}
+              <div className="flex items-center ml-10 mb-1">
+                {HEATMAP_HOURS.filter((_, i) => i % 3 === 0).map((h, i) => (
+                  <span
+                    key={h}
+                    className="text-[9px] text-muted tabular-nums"
+                    style={{ width: `${100 / 8}%` }}
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+              {/* Grid rows */}
+              {hourlyHeatmap.map((row, dayIdx) => (
+                <div key={dayIdx} className="flex items-center gap-1 mb-0.5">
+                  <span className="w-8 text-right text-[10px] text-muted">
+                    {HEATMAP_DAYS[dayIdx]}
+                  </span>
+                  <div className="flex flex-1 gap-0.5">
+                    {row.map((value, hourIdx) => {
+                      const intensity = heatmapMax > 0 ? value / heatmapMax : 0;
+                      return (
+                        <div
+                          key={hourIdx}
+                          className="aspect-square flex-1 rounded-[3px] transition-colors"
+                          style={{
+                            backgroundColor: intensity === 0
+                              ? "var(--surface)"
+                              : `rgba(255, 102, 0, ${0.15 + intensity * 0.75})`,
+                          }}
+                          title={`${HEATMAP_DAYS[dayIdx]} ${HEATMAP_HOURS[hourIdx]}: ${value} payment${value !== 1 ? "s" : ""}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {/* Legend */}
+              <div className="mt-2 flex items-center justify-end gap-1.5">
+                <span className="text-[9px] text-muted">Less</span>
+                {[0, 0.25, 0.5, 0.75, 1].map((v) => (
+                  <div
+                    key={v}
+                    className="h-3 w-3 rounded-[2px]"
+                    style={{
+                      backgroundColor: v === 0
+                        ? "var(--surface)"
+                        : `rgba(255, 102, 0, ${0.15 + v * 0.75})`,
+                    }}
+                  />
+                ))}
+                <span className="text-[9px] text-muted">More</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyChart message="No activity data for heatmap" />
+        )}
+      </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Funnel Visualization — stepped bars with conversion arrows
+// Funnel Visualization
 // ---------------------------------------------------------------------------
 
 function FunnelVisualization({
@@ -607,7 +674,6 @@ function FunnelVisualization({
 
         return (
           <div key={stage.label}>
-            {/* Conversion arrow between stages */}
             {convRate && (
               <div className="flex items-center gap-2 py-1.5 pl-2">
                 <div className="h-3 w-px bg-border" />
@@ -616,7 +682,6 @@ function FunnelVisualization({
                 </span>
               </div>
             )}
-
             <div className="flex items-center gap-3">
               <span className="w-16 text-xs text-foreground-secondary">
                 {stage.label}
@@ -661,4 +726,3 @@ function EmptyChart({ message }: { message: string }) {
     </div>
   );
 }
-

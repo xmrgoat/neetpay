@@ -3,7 +3,8 @@ import { createSolanaProvider } from "./solana-provider";
 import { createBitcoinProvider } from "./bitcoin-provider";
 import { createTronProvider, USDT_TRC20 } from "./tron-provider";
 import { createMoneroProvider } from "./monero-provider";
-import { createBlockCypherProvider } from "./blockcypher-provider";
+import { createLitecoinProvider } from "./litecoin-provider";
+import { createDogecoinProvider } from "./dogecoin-provider";
 import type { ChainRegistryEntry } from "./types";
 
 // ERC-20 token contracts (Ethereum mainnet)
@@ -35,8 +36,8 @@ let solana: ReturnType<typeof createSolanaProvider>;
 let btc: ReturnType<typeof createBitcoinProvider>;
 let tron: ReturnType<typeof createTronProvider>;
 let monero: ReturnType<typeof createMoneroProvider>;
-let ltc: ReturnType<typeof createBlockCypherProvider>;
-let doge: ReturnType<typeof createBlockCypherProvider>;
+let ltc: ReturnType<typeof createLitecoinProvider>;
+let doge: ReturnType<typeof createDogecoinProvider>;
 
 function getEvmEthereum() {
   if (!evmEthereum) evmEthereum = createEvmProvider("ethereum");
@@ -83,11 +84,11 @@ function getMonero() {
   return monero;
 }
 function getLtc() {
-  if (!ltc) ltc = createBlockCypherProvider("litecoin");
+  if (!ltc) ltc = createLitecoinProvider();
   return ltc;
 }
 function getDoge() {
-  if (!doge) doge = createBlockCypherProvider("dogecoin");
+  if (!doge) doge = createDogecoinProvider();
   return doge;
 }
 

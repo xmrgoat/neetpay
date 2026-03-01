@@ -20,6 +20,12 @@ interface Props {
   avgPayment: number;
   avgChange: number;
   activeLinks: number;
+  sparklines: {
+    paymentCounts: number[];
+    conversionRates: number[];
+    avgPayments: number[];
+    activeLinkCounts: number[];
+  };
 }
 
 // ─── Sparkline with gradient fill ───────────────────────────────────────────
@@ -84,6 +90,7 @@ export function OverviewKpis({
   avgPayment,
   avgChange,
   activeLinks,
+  sparklines,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -111,28 +118,28 @@ export function OverviewKpis({
       value: payments.toLocaleString(),
       change: paymentsChange,
       icon: ArrowLeftRight,
-      sparkline: [82, 95, 74, 110, 88, 102, 97, 85, 92, 105],
+      sparkline: sparklines.paymentCounts,
     },
     {
       label: "Conversion Rate",
       value: `${conversionRate}%`,
       change: null as number | null,
       icon: Percent,
-      sparkline: [68, 72, 71, 74, 70, 76, 74, 73, 75, 74],
+      sparkline: sparklines.conversionRates,
     },
     {
       label: "Avg. Payment",
       value: `$${avgPayment}`,
       change: avgChange,
       icon: DollarSign,
-      sparkline: [380, 410, 395, 450, 420, 460, 435, 440, 430, 435],
+      sparkline: sparklines.avgPayments,
     },
     {
       label: "Active Links",
       value: activeLinks.toString(),
       change: null as number | null,
       icon: LinkIcon,
-      sparkline: [5, 8, 12, 15, 18, 14, 20, 23, 19, 23],
+      sparkline: sparklines.activeLinkCounts,
     },
   ];
 

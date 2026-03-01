@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getShiftStatus } from "@/lib/swap/sideshift";
+import { getSwapStatus } from "@/lib/swap/router";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -8,25 +8,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const shiftId = req.nextUrl.searchParams.get("shiftId");
-  if (!shiftId) {
-    return NextResponse.json({ error: "Missing shiftId parameter" }, { status: 400 });
+  const swapId = req.nextUrl.searchParams.get("swapId");
+  const provider = req.nextUrl.searchParams.get("provider") as
+    | "thorchain"
+    | "oneinch"
+    | "sideshift"
+    | null;
+
+  if (!swapId || !provider) {
+    return NextResponse.json(
+      { error: "Missing swapId or provider parameter" },
+      { status: 400 },
+    );
   }
 
   try {
-    const status = await getShiftStatus(shiftId);
+    const status = await getSwapStatus(swapId, provider);
 
     return NextResponse.json({
-      shiftId: status.id,
+      swapId: status.swapId,
+      provider: status.provider,
       status: status.status,
-      depositAddress: status.depositAddress,
-      settleAddress: status.settleAddress,
       depositAmount: status.depositAmount,
       settleAmount: status.settleAmount,
-      rate: status.rate,
-      expiresAt: status.expiresAt,
-      depositReceivedAt: status.depositReceivedAt,
       settleHash: status.settleHash,
+      settleAddress: status.settleAddress,
     });
   } catch (err) {
     console.error("[swap/status]", err);

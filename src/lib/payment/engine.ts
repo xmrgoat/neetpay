@@ -199,7 +199,7 @@ export async function pollActivePayments(): Promise<{
   const payments = await db.payment.findMany({
     where: {
       status: { in: ["pending", "confirming"] },
-      chain: { in: ["bitcoin", "tron", "monero"] },
+      chain: { in: ["bitcoin", "tron", "monero", "litecoin", "dogecoin"] },
     },
     select: { id: true },
   });
@@ -340,6 +340,11 @@ function buildCurrencyKey(payment: {
     TRX: "TRX",
     BNB: "BNB",
     MATIC: "MATIC",
+    LTC: "LTC",
+    DOGE: "DOGE",
+    ARB: "ARB",
+    OP: "OP",
+    AVAX: "AVAX",
   };
 
   if (!payment.tokenContract && nativeMap[payment.payCurrency]) {

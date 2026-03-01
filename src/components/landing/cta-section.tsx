@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 import Link from "next/link";
@@ -15,28 +14,19 @@ export function CtaSection() {
         className="mx-auto max-w-2xl px-6 text-center"
       >
         <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-          Deploy your first payment.
+          Start getting paid.
         </h2>
         <p className="mt-4 text-lg text-foreground-secondary">
-          No credit card. No onboarding call. No compliance review. Just code.
+          Free tier. No credit card. Takes 30 seconds.
         </p>
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href="/register" className="w-full sm:w-auto">
-            <Button size="lg" className="h-12 w-full sm:w-auto px-8 text-base font-semibold">
-              Start accepting payments
-              <ArrowRight size={16} />
-            </Button>
-          </Link>
-          <Link href="/docs" className="w-full sm:w-auto">
-            <Button variant="secondary" size="lg" className="h-12 w-full sm:w-auto px-8">
-              Read the docs
-            </Button>
+        <div className="mt-8 flex items-center justify-center">
+          <Link href="/register" className="btn-rainbow rounded-full cursor-pointer">
+            <div className="btn-rainbow-inner flex items-center justify-center h-14 px-10 rounded-full">
+              <span className="font-semibold text-lg">Create your account</span>
+              <ArrowRight className="w-5 h-5 ml-2 text-black" />
+            </div>
           </Link>
         </div>
-
-        <p className="mt-6 text-xs text-muted">
-          Free up to 100 transactions/month. No vendor lock-in.
-        </p>
       </div>
     </section>
   );

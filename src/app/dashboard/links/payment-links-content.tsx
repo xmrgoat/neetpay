@@ -22,13 +22,14 @@ import { SITE_URL } from "@/lib/constants";
 /*  Types                                                                     */
 /* -------------------------------------------------------------------------- */
 
-interface CreatedLink {
+export interface CreatedLink {
   trackId: string;
   url: string;
   amount: number;
   currency: string;
   payCurrency: string;
   description: string | null;
+  status?: string;
   createdAt: string;
 }
 
@@ -61,7 +62,7 @@ const CRYPTO_OPTIONS: Array<{
 /*  Component                                                                 */
 /* -------------------------------------------------------------------------- */
 
-export function PaymentLinksContent({ userId }: { userId: string }) {
+export function PaymentLinksContent({ userId, initialLinks = [] }: { userId: string; initialLinks?: CreatedLink[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   /* ---- Dialog state ---- */
@@ -83,8 +84,8 @@ export function PaymentLinksContent({ userId }: { userId: string }) {
   const [createdLink, setCreatedLink] = useState<CreatedLink | null>(null);
   const [copied, setCopied] = useState(false);
 
-  /* ---- Created links history (session-local) ---- */
-  const [links, setLinks] = useState<CreatedLink[]>([]);
+  /* ---- Created links history (pre-loaded from DB + session additions) ---- */
+  const [links, setLinks] = useState<CreatedLink[]>(initialLinks);
 
   /* ---- GSAP entrance animation ---- */
   useGSAP(
@@ -514,6 +515,17 @@ function LinksList({
             <span className="rounded-md border border-border bg-elevated px-2 py-0.5 text-xs font-medium text-foreground-secondary">
               {link.payCurrency}
             </span>
+            {link.status && (
+              <span className={cn(
+                "rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase",
+                link.status === "paid" ? "bg-success/10 text-success" :
+                link.status === "pending" ? "bg-warning/10 text-warning" :
+                link.status === "expired" ? "bg-muted/10 text-muted" :
+                "bg-surface text-foreground-secondary"
+              )}>
+                {link.status}
+              </span>
+            )}
             <button
               onClick={() => onCopy(link.url)}
               className="rounded-lg p-1.5 text-foreground-secondary hover:text-foreground hover:bg-elevated transition-colors"
