@@ -386,7 +386,7 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
           ref={containerRef}
           className={cn(
             "w-full rounded-2xl",
-            onBack ? "bg-background p-5" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
+            onBack ? "bg-background p-5" : "max-w-[min(460px,calc(100vw-1rem))] border border-border bg-background shadow-xl p-6"
           )}
         >
           {onBack && activePanel && onSwitchPanel && (
@@ -551,7 +551,7 @@ export function SwapInterface({ holdings, onBack, activePanel, onSwitchPanel }: 
         ref={containerRef}
         className={cn(
           "w-full rounded-2xl",
-          onBack ? "bg-background p-5" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
+          onBack ? "bg-background p-5" : "max-w-[min(460px,calc(100vw-1rem))] border border-border bg-background shadow-xl p-6"
         )}
       >
         {/* Tab Bar */}

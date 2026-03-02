@@ -230,7 +230,7 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
                 className="flex items-center px-5 py-3 transition-colors hover:bg-surface/40"
               >
                 {/* Type badge */}
-                <div className="w-[72px] shrink-0">
+                <div className="hidden sm:block w-[72px] shrink-0">
                   <span className="inline-flex items-center rounded-md bg-surface px-2 py-1 text-[10px] font-semibold text-foreground-secondary">
                     Payment
                   </span>
@@ -250,7 +250,7 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
                 </div>
 
                 {/* Status */}
-                <div className="w-[88px] shrink-0 flex justify-center">
+                <div className="hidden xs:flex w-[88px] shrink-0 justify-center">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none ${STATUS_STYLE[tx.status] ?? "bg-surface text-muted"}`}>
                     {STATUS_LABEL[tx.status] ?? tx.status}
                   </span>

@@ -298,7 +298,7 @@ function CryptoDetailCard({ asset, onClose }: { asset: CryptoAsset; onClose: () 
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div ref={cardRef} className="fixed left-1/2 top-1/2 z-50 w-[340px] -translate-x-1/2 -translate-y-1/2">
+      <div ref={cardRef} className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] sm:w-[340px] -translate-x-1/2 -translate-y-1/2">
         <div
           className="relative overflow-hidden rounded-2xl p-6"
           style={{

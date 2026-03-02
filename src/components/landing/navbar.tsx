@@ -121,7 +121,7 @@ export function Navbar() {
       {mobileOpen && (
         <div
           ref={mobileMenuRef}
-          className="fixed inset-0 z-40 bg-[#08080c] pt-16 md:hidden"
+          className="fixed inset-0 z-40 bg-[#08080c] pt-16 md:hidden overflow-y-auto"
         >
           <div className="flex flex-col gap-1 p-6">
             {NAV_LINKS.map((link) => (

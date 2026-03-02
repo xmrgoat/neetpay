@@ -151,7 +151,7 @@ export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel 
         ref={containerRef}
         className={cn(
           "w-full rounded-2xl p-5",
-          onBack ? "bg-background" : "max-w-[460px] border border-border bg-background shadow-xl p-6"
+          onBack ? "bg-background" : "max-w-[min(460px,calc(100vw-1rem))] border border-border bg-background shadow-xl p-6"
         )}
       >
         {/* Tab Bar */}

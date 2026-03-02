@@ -72,7 +72,7 @@ function CheckoutMockup() {
   return (
     <div
       ref={containerRef}
-      className="relative rounded-2xl border border-border bg-surface overflow-hidden w-full max-w-[360px] transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(255,102,0,0.08)]"
+      className="relative rounded-2xl border border-border bg-surface overflow-hidden w-full max-w-[min(360px,100%)] transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(255,102,0,0.08)]"
       style={{ opacity: 0 }}
     >
       {/* Shine sweep */}
@@ -241,7 +241,7 @@ function PaymentLinkMockup() {
   }
 
   return (
-    <div ref={containerRef} className="w-full max-w-[360px] space-y-2">
+    <div ref={containerRef} className="w-full max-w-[min(360px,100%)] space-y-2">
       <div
         className="rounded-2xl overflow-hidden"
         style={{
