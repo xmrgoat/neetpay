@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getChainEntry, CHAIN_REGISTRY } from "@/lib/chains/registry";
+import type { PrismaClient } from "@prisma/client";
 
 export interface WalletBalanceWithPrice {
   currency: string;
@@ -104,6 +105,90 @@ export async function getBalances(
 }
 
 /**
+ * Chains that need a unique wallet address at account creation.
+ * EVM chains all share the same derivation (m/44'/60'/0'/0/{i}),
+ * so the same address is stored under each EVM chain name.
+ */
+const INIT_CHAINS: { key: string; chain: string; evmFamily?: boolean }[] = [
+  { key: "ETH", chain: "ethereum", evmFamily: true },
+  { key: "BNB", chain: "bsc", evmFamily: true },
+  { key: "MATIC", chain: "polygon", evmFamily: true },
+  { key: "ARB", chain: "arbitrum", evmFamily: true },
+  { key: "OP", chain: "optimism", evmFamily: true },
+  { key: "AVAX", chain: "avalanche", evmFamily: true },
+  { key: "BTC", chain: "bitcoin" },
+  { key: "SOL", chain: "solana" },
+  { key: "XMR", chain: "monero" },
+  { key: "TRX", chain: "tron" },
+  { key: "LTC", chain: "litecoin" },
+  { key: "DOGE", chain: "dogecoin" },
+];
+
+/**
+ * Allocate the next derivation index for a chain inside a transaction.
+ * Uses serializable-level locking to prevent race conditions.
+ */
+async function allocateNextIndex(
+  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+  chain: string,
+): Promise<number> {
+  const last = await tx.walletAddress.findFirst({
+    where: { chain },
+    orderBy: { derivationIndex: "desc" },
+    select: { derivationIndex: true },
+  });
+  return (last?.derivationIndex ?? -1) + 1;
+}
+
+/**
+ * Generate wallet addresses for all supported chains when a user registers.
+ * EVM chains share the same derived address; non-EVM chains each get unique ones.
+ */
+export async function initializeUserWallets(userId: string): Promise<void> {
+  await db.$transaction(async (tx) => {
+    // 1. Derive a single EVM address (shared across all EVM chains)
+    const evmEntry = getChainEntry("ETH");
+    if (!evmEntry) throw new Error("ETH chain entry not found");
+
+    const evmIndex = await allocateNextIndex(tx, "ethereum");
+    const { address: evmAddress } = await evmEntry.provider.generateAddress(evmIndex);
+
+    // Store the same EVM address for every EVM chain
+    for (const c of INIT_CHAINS.filter((c) => c.evmFamily)) {
+      const idx = c.chain === "ethereum" ? evmIndex : await allocateNextIndex(tx, c.chain);
+      await tx.walletAddress.create({
+        data: { userId, chain: c.chain, address: evmAddress, derivationIndex: idx },
+      });
+    }
+
+    // 2. Derive unique addresses for non-EVM chains
+    for (const c of INIT_CHAINS.filter((c) => !c.evmFamily)) {
+      const entry = getChainEntry(c.key);
+      if (!entry) continue;
+
+      const idx = await allocateNextIndex(tx, c.chain);
+      const { address } = await entry.provider.generateAddress(idx);
+
+      await tx.walletAddress.create({
+        data: { userId, chain: c.chain, address, derivationIndex: idx },
+      });
+    }
+  });
+}
+
+/**
+ * Get the user's primary wallet address (ETH by default).
+ */
+export async function getPrimaryAddress(userId: string): Promise<string | null> {
+  const addr = await db.walletAddress.findFirst({
+    where: { userId, chain: "ethereum", paymentId: null },
+    orderBy: { createdAt: "asc" },
+    select: { address: true },
+  });
+  return addr?.address ?? null;
+}
+
+/**
  * Get or generate a deposit address.
  */
 export async function getDepositAddress(
@@ -127,17 +212,16 @@ export async function getDepositAddress(
     return { address: existing.address };
   }
 
-  // Generate new address — use global derivation index to avoid collisions
-  const lastAddress = await db.walletAddress.findFirst({
-    where: { chain },
-    orderBy: { derivationIndex: "desc" },
-  });
-  const derivationIndex = (lastAddress?.derivationIndex ?? -1) + 1;
+  // Generate new address inside a transaction to avoid race conditions
+  const address = await db.$transaction(async (tx) => {
+    const derivationIndex = await allocateNextIndex(tx, chain);
+    const { address: addr } = await entry.provider.generateAddress(derivationIndex);
 
-  const { address } = await entry.provider.generateAddress(derivationIndex);
+    await tx.walletAddress.create({
+      data: { userId, chain, address: addr, derivationIndex },
+    });
 
-  await db.walletAddress.create({
-    data: { userId, chain, address, derivationIndex },
+    return addr;
   });
 
   return { address };

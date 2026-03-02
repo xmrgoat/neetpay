@@ -4,6 +4,9 @@ import { TerminalHero } from "@/components/landing/terminal-hero";
 import { CryptoUniverse } from "@/components/landing/crypto-universe";
 import { PrivacySection } from "@/components/landing/privacy-section";
 import { FeaturesSection } from "@/components/landing/features-section";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { DeveloperSection } from "@/components/landing/developer-section";
+import { SecuritySection } from "@/components/landing/security-section";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
@@ -32,6 +35,9 @@ export default function HomePage() {
           <CryptoUniverse />
           <PrivacySection />
           <FeaturesSection />
+          <HowItWorks />
+          <DeveloperSection />
+          <SecuritySection />
           <PricingSection />
           <CtaSection />
         </main>

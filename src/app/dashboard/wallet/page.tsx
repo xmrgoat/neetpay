@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getBalances } from "@/lib/wallet/wallet-service";
+import { getBalances, getPrimaryAddress } from "@/lib/wallet/wallet-service";
 import { getAllPrices } from "@/lib/price/coingecko";
 import { CHAIN_REGISTRY } from "@/lib/chains/registry";
 import { WalletPageClient } from "./client";
@@ -17,9 +17,10 @@ export default async function WalletPage() {
 
   const userId = session.user.id;
 
-  const [balances, prices] = await Promise.all([
+  const [balances, prices, primaryAddress] = await Promise.all([
     getBalances(userId),
     getAllPrices(),
+    getPrimaryAddress(userId),
   ]);
 
   // ── Build WalletAsset[] (for backward compat) ──────────────────────────
@@ -111,6 +112,7 @@ export default async function WalletPage() {
       holdings={holdings}
       totalUsd={totalUsd}
       change24hUsd={change24hUsd}
+      walletAddress={primaryAddress ?? undefined}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getOverviewStats, getRecentTransactions, getAnalyticsData, getKpiSparklines } from "@/lib/dashboard/queries";
-import { getBalances } from "@/lib/wallet/wallet-service";
+import { getBalances, getPrimaryAddress } from "@/lib/wallet/wallet-service";
 import { getAllPrices } from "@/lib/price/coingecko";
 import { CHAIN_REGISTRY } from "@/lib/chains/registry";
 import { RevenueSummary } from "@/components/dashboard/revenue-summary";
@@ -26,13 +26,14 @@ export default async function DashboardPage() {
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [stats, analytics, recentPayments, balances, prices, sparklines] = await Promise.all([
+  const [stats, analytics, recentPayments, balances, prices, sparklines, primaryAddress] = await Promise.all([
     getOverviewStats(userId),
     getAnalyticsData(userId, thirtyDaysAgo, now),
     getRecentTransactions(userId, 6),
     getBalances(userId),
     getAllPrices(),
     getKpiSparklines(userId),
+    getPrimaryAddress(userId),
   ]);
 
   // ── Build wallet holdings ─────────────────────────────────────────────────
@@ -123,6 +124,7 @@ export default async function DashboardPage() {
         totalUsd={totalUsd}
         change24h={change24hUsd}
         holdings={holdings}
+        walletAddress={primaryAddress ?? undefined}
       />
 
     </div>

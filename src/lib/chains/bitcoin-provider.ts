@@ -3,17 +3,31 @@ import { getMnemonic } from "@/lib/wallet/hd-wallet";
 import type { ChainProvider, PaymentCheck, GeneratedAddress } from "./types";
 
 const ALCHEMY_KEY = process.env.ALCHEMY_API_KEY || "";
-const RPC_URL = `https://btc-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`;
+const BTC_RPC_URL = process.env.BITCOIN_RPC_URL || "";
+const BTC_RPC_USER = process.env.BITCOIN_RPC_USER || "";
+const BTC_RPC_PASS = process.env.BITCOIN_RPC_PASSWORD || "";
+
+// Use VPS bitcoind if configured, otherwise fall back to Alchemy
+const RPC_URL = BTC_RPC_URL || `https://btc-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 const REQUIRED_CONFIRMATIONS = 3;
 const SATS_PER_BTC = 100_000_000;
 
 /**
- * Call Alchemy Bitcoin JSON-RPC.
+ * Call Bitcoin JSON-RPC (VPS bitcoind or Alchemy fallback).
  */
 async function btcRpc(method: string, params: unknown[] = []): Promise<unknown> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (BTC_RPC_USER) {
+    const credentials = Buffer.from(`${BTC_RPC_USER}:${BTC_RPC_PASS}`).toString("base64");
+    headers["Authorization"] = `Basic ${credentials}`;
+  }
+
   const res = await fetch(RPC_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
   const json = await res.json();

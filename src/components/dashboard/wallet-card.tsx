@@ -126,7 +126,6 @@ const CARD_THEMES = [
 ] as const;
 
 const STORAGE_KEY = "neetpay-card-theme";
-const FAKE_ADDRESS = "0xAX4t2gzva6L4dKWqWVYQPhF9";
 
 function getStoredTheme(): string {
   if (typeof window === "undefined") return "orange";
@@ -230,7 +229,7 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
   const [showQr, setShowQr] = useState(false);
   const isAnimating = useRef(false);
 
-  const address = walletAddress || FAKE_ADDRESS;
+  const address = walletAddress || "";
 
   useEffect(() => {
     setThemeId(getStoredTheme());
@@ -364,7 +363,7 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
                   className="flex flex-1 items-center gap-2 cursor-pointer min-w-0"
                 >
                   <span className="truncate text-left font-mono text-[11px] tracking-widest text-white/50 group-hover/addr:text-white/70 transition-colors">
-                    {formatCardAddress(address)}
+                    {address ? formatCardAddress(address) : "No address yet"}
                   </span>
                   {copied ? (
                     <CheckCheck className="h-3 w-3 shrink-0 text-green-400" />

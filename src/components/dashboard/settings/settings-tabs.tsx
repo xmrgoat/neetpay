@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { key: "general", label: "General" },
+  { key: "payouts", label: "Payouts" },
   { key: "security", label: "Security" },
   { key: "billing", label: "Billing" },
 ] as const;

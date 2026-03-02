@@ -637,6 +637,86 @@ export async function getKpiSparklines(userId: string) {
 }
 
 /**
+ * Get fees collected by this user's payments (platform fee audit).
+ */
+export async function getFeesCollected(
+  userId: string,
+  startDate?: Date,
+  endDate?: Date
+) {
+  const where: Record<string, unknown> = { userId };
+  if (startDate || endDate) {
+    where.createdAt = {
+      ...(startDate && { gte: startDate }),
+      ...(endDate && { lte: endDate }),
+    };
+  }
+
+  const logs = await db.feeLog.findMany({
+    where,
+    select: {
+      currency: true,
+      feeAmount: true,
+      netAmount: true,
+      receivedAmount: true,
+      createdAt: true,
+    },
+  });
+
+  const byCurrency = new Map<string, { fees: number; net: number; gross: number; count: number }>();
+  for (const log of logs) {
+    const existing = byCurrency.get(log.currency) || { fees: 0, net: 0, gross: 0, count: 0 };
+    existing.fees += log.feeAmount;
+    existing.net += log.netAmount;
+    existing.gross += log.receivedAmount;
+    existing.count++;
+    byCurrency.set(log.currency, existing);
+  }
+
+  return Array.from(byCurrency.entries()).map(([currency, data]) => ({
+    currency,
+    ...data,
+  }));
+}
+
+/**
+ * Get forwarding status summary for settled payments.
+ */
+export async function getForwardingStatus(userId: string) {
+  const payments = await db.payment.findMany({
+    where: {
+      userId,
+      status: "paid",
+      forwardingStatus: { not: "none" },
+    },
+    select: {
+      id: true,
+      trackId: true,
+      payCurrency: true,
+      netAmount: true,
+      forwardingStatus: true,
+      forwardingTxId: true,
+      forwardedAt: true,
+      forwardingRetryCount: true,
+      forwardingLastError: true,
+      paidAt: true,
+    },
+    orderBy: { paidAt: "desc" },
+    take: 20,
+  });
+
+  const statusCounts = payments.reduce(
+    (acc, p) => {
+      acc[p.forwardingStatus] = (acc[p.forwardingStatus] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  return { payments, statusCounts };
+}
+
+/**
  * Get wallet balances — aggregates paid amounts by currency.
  * In production this would query actual on-chain balances.
  */

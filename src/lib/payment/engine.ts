@@ -20,53 +20,73 @@ export async function createPayment(params: {
     throw new Error(`Unsupported currency: ${params.payCurrencyKey}`);
   }
 
-  // Get next derivation index
-  const lastAddress = await db.walletAddress.findFirst({
-    where: { chain: entry.chain },
-    orderBy: { derivationIndex: "desc" },
-  });
-  const derivationIndex = (lastAddress?.derivationIndex ?? -1) + 1;
-
-  // Generate unique deposit address
-  const { address } = await entry.provider.generateAddress(derivationIndex);
-
   const trackId = generateTrackId();
   const lifetimeMs = (params.lifetimeMinutes || 30) * 60 * 1000;
   const expiresAt = new Date(Date.now() + lifetimeMs);
 
-  // Store wallet address
-  const walletAddress = await db.walletAddress.create({
-    data: {
-      chain: entry.chain,
-      address,
-      derivationIndex,
+  // Snapshot merchant settlement config at creation time
+  const user = await db.user.findUnique({
+    where: { id: params.userId },
+    select: {
+      xmrSettlementAddress: true,
+      autoForwardEnabled: true,
+      platformFeePercent: true,
     },
   });
 
-  // Create payment record
-  const payment = await db.payment.create({
-    data: {
-      userId: params.userId,
-      trackId,
-      amount: params.amount,
-      currency: params.currency,
-      status: "pending",
-      description: params.description,
-      chain: entry.chain,
-      payCurrency: entry.symbol,
-      payAddress: address,
-      network: entry.network,
-      tokenContract: entry.tokenContract,
-      requiredConfs: entry.provider.getRequiredConfirmations(),
-      derivationIndex,
-      expiresAt,
-    },
-  });
+  // Only XMR supports auto-forwarding for now
+  const isXmr = entry.symbol === "XMR";
+  const merchantWalletAddress =
+    isXmr && user?.autoForwardEnabled ? (user.xmrSettlementAddress ?? null) : null;
+  const feePercent = user?.platformFeePercent ?? 0.4;
 
-  // Link wallet address to payment
-  await db.walletAddress.update({
-    where: { id: walletAddress.id },
-    data: { paymentId: payment.id },
+  // Atomic: allocate derivation index + generate address + create records
+  const { payment, address } = await db.$transaction(async (tx) => {
+    const lastAddress = await tx.walletAddress.findFirst({
+      where: { chain: entry.chain },
+      orderBy: { derivationIndex: "desc" },
+      select: { derivationIndex: true },
+    });
+    const derivationIndex = (lastAddress?.derivationIndex ?? -1) + 1;
+
+    const { address: addr } = await entry.provider.generateAddress(derivationIndex);
+
+    const walletAddress = await tx.walletAddress.create({
+      data: {
+        chain: entry.chain,
+        address: addr,
+        derivationIndex,
+      },
+    });
+
+    const p = await tx.payment.create({
+      data: {
+        userId: params.userId,
+        trackId,
+        amount: params.amount,
+        currency: params.currency,
+        status: "pending",
+        description: params.description,
+        chain: entry.chain,
+        payCurrency: entry.symbol,
+        payAddress: addr,
+        network: entry.network,
+        tokenContract: entry.tokenContract,
+        requiredConfs: entry.provider.getRequiredConfirmations(),
+        derivationIndex,
+        expiresAt,
+        platformFeePercent: feePercent,
+        merchantWalletAddress,
+        forwardingStatus: merchantWalletAddress ? "none" : "skipped",
+      },
+    });
+
+    await tx.walletAddress.update({
+      where: { id: walletAddress.id },
+      data: { paymentId: p.id },
+    });
+
+    return { payment: p, address: addr };
   });
 
   return {
@@ -123,7 +143,14 @@ export async function checkPaymentStatus(paymentId: string): Promise<boolean> {
 
   // Transaction detected
   if (check.confirmations >= entry.provider.getRequiredConfirmations()) {
-    // Fully confirmed
+    // Fully confirmed — calculate platform fee
+    const feePercent = payment.platformFeePercent ?? 0.4;
+    const feeAmount = check.amount * (feePercent / 100);
+    const netAmount = check.amount - feeAmount;
+
+    // Determine forwarding status
+    const forwardingStatus = payment.merchantWalletAddress ? "pending" : "skipped";
+
     await db.payment.update({
       where: { id: paymentId },
       data: {
@@ -133,17 +160,20 @@ export async function checkPaymentStatus(paymentId: string): Promise<boolean> {
         payAmount: check.amount,
         confirmations: check.confirmations,
         paidAt: new Date(),
+        platformFeeAmount: feeAmount,
+        netAmount,
+        forwardingStatus,
       },
     });
 
-    // Credit wallet balance + track event
+    // Credit wallet balance (net amount only) + track event
     try {
       if (payment.payCurrency && payment.chain) {
         await creditBalance(
           payment.userId,
           payment.payCurrency,
           payment.chain,
-          check.amount,
+          netAmount,
         );
         await db.walletTransaction.create({
           data: {
@@ -151,11 +181,32 @@ export async function checkPaymentStatus(paymentId: string): Promise<boolean> {
             type: "payment_received",
             currency: payment.payCurrency,
             chain: payment.chain,
-            amount: check.amount,
+            amount: netAmount,
+            fee: feeAmount,
             txHash: check.txHash || undefined,
             paymentId: payment.id,
             status: "confirmed",
           },
+        });
+        // Persist fee audit log
+        await db.feeLog.create({
+          data: {
+            userId: payment.userId,
+            paymentId: payment.id,
+            currency: payment.payCurrency,
+            chain: payment.chain,
+            receivedAmount: check.amount,
+            feeAmount,
+            feePercent,
+            netAmount,
+            txId: check.txHash || undefined,
+          },
+        });
+        // Increment platform balance
+        await db.platformBalance.upsert({
+          where: { currency_chain: { currency: payment.payCurrency, chain: payment.chain } },
+          create: { currency: payment.payCurrency, chain: payment.chain, amount: feeAmount },
+          update: { amount: { increment: feeAmount } },
         });
       }
     } catch (err) {

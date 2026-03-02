@@ -6,6 +6,7 @@ import { ProfileSection } from "@/components/dashboard/settings/profile-section"
 import { ApiKeysSection } from "@/components/dashboard/settings/api-keys-section";
 import { WebhookSection } from "@/components/dashboard/settings/webhook-section";
 import { SubscriptionSection } from "@/components/dashboard/settings/subscription-section";
+import { SettlementSection } from "@/components/dashboard/settings/settlement-section";
 
 interface SettingsPageProps {
   searchParams: Promise<{ tab?: string }>;
@@ -27,6 +28,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         plan: true,
         webhookUrl: true,
         webhookSecret: true,
+        xmrSettlementAddress: true,
+        autoForwardEnabled: true,
+        platformFeePercent: true,
+        minForwardAmount: true,
       },
     }),
     db.apiKey.findMany({
@@ -83,6 +88,17 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             currentUrl={user.webhookUrl}
             webhookSecret={user.webhookSecret}
             recentLogs={serializedLogs}
+          />
+        </div>
+      )}
+
+      {activeTab === "payouts" && (
+        <div className="space-y-6">
+          <SettlementSection
+            xmrSettlementAddress={user.xmrSettlementAddress ?? null}
+            autoForwardEnabled={user.autoForwardEnabled ?? true}
+            platformFeePercent={user.platformFeePercent ?? 0.4}
+            minForwardAmount={user.minForwardAmount ?? 0.001}
           />
         </div>
       )}

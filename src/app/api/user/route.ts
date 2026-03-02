@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { initializeUserWallets } from "@/lib/wallet/wallet-service";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -39,6 +40,14 @@ export async function POST(req: Request) {
         hashedPassword,
       },
     });
+
+    // Generate wallet addresses for all supported chains
+    try {
+      await initializeUserWallets(user.id);
+    } catch (walletErr) {
+      console.error("[POST /api/user] Wallet initialization failed:", walletErr);
+      // User is created — wallet init can be retried on first dashboard visit
+    }
 
     return NextResponse.json(
       { id: user.id, email: user.email },

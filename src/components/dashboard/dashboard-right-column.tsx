@@ -20,11 +20,12 @@ interface Props {
   totalUsd: number;
   change24h: number;
   holdings: Holding[];
+  walletAddress?: string;
 }
 
 type PanelType = "send" | "receive" | "swap";
 
-export function DashboardRightColumn({ totalUsd, change24h, holdings }: Props) {
+export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddress }: Props) {
   const [activePanel, setActivePanel] = useState<PanelType | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -112,6 +113,7 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings }: Props) {
             totalUsd={totalUsd}
             change24h={change24h}
             holdings={holdings}
+            walletAddress={walletAddress}
             onSendClick={() => switchPanel("send")}
             onReceiveClick={() => switchPanel("receive")}
             onSwapClick={() => switchPanel("swap")}

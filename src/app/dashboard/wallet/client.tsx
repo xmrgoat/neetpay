@@ -30,6 +30,7 @@ interface WalletPageClientProps {
   holdings: Holding[];
   totalUsd: number;
   change24hUsd: number;
+  walletAddress?: string;
 }
 
 export function WalletPageClient({
@@ -37,6 +38,7 @@ export function WalletPageClient({
   holdings,
   totalUsd,
   change24hUsd,
+  walletAddress,
 }: WalletPageClientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -260,6 +262,7 @@ export function WalletPageClient({
             totalUsd={totalUsd}
             change24h={change24hUsd}
             holdings={holdings}
+            walletAddress={walletAddress}
             onSendClick={() => switchPanel("send")}
             onReceiveClick={() => switchPanel("receive")}
             onSwapClick={() => switchPanel("swap")}
