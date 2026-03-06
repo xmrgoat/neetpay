@@ -156,7 +156,7 @@ export default function HomePage() {
           loop
           muted
           playsInline
-          className="absolute inset-0 h-full w-full object-cover object-left"
+          className="absolute inset-0 h-full w-full object-cover object-center"
           style={{ opacity: isDark ? 1 : 0, transition: "none" }}
         >
           <source src="/video/night1.mp4" type="video/mp4" />
@@ -167,7 +167,7 @@ export default function HomePage() {
           loop
           muted
           playsInline
-          className="absolute inset-0 h-full w-full object-cover object-left"
+          className="absolute inset-0 h-full w-full object-cover object-center"
           style={{ opacity: isDark ? 0 : 1, transition: "none" }}
         >
           <source src="/video/day.mp4" type="video/mp4" />
@@ -184,21 +184,13 @@ export default function HomePage() {
               loop
               muted
               playsInline
-              className="absolute inset-0 h-full w-full object-cover object-left"
+              className="absolute inset-0 h-full w-full object-cover object-center"
             >
               <source src={revealImg === "light" ? "/video/day.mp4" : "/video/night1.mp4"} type="video/mp4" />
             </video>
           </div>
         )}
 
-        {/* Right crop — gradient fade to hide Gemini logo (desktop only) */}
-        <div
-          className="absolute inset-y-0 right-0 z-[2] w-[15%] hidden md:block"
-          style={{
-            background:
-              "linear-gradient(to right, transparent, black 70%)",
-          }}
-        />
         {/* Bottom vignette */}
         <div
           className="absolute inset-x-0 bottom-0 z-[2] h-[50%]"
