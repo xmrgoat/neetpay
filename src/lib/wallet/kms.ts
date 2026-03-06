@@ -22,8 +22,10 @@ function getEncryptionKey(): string {
   return key;
 }
 
+// WARNING: Changing these scrypt cost parameters requires re-encrypting the seed
+// with the new parameters, otherwise decryption will produce a wrong key and fail.
 function deriveKey(passphrase: string, salt: Buffer): Buffer {
-  return scryptSync(passphrase, salt, KEY_LEN) as Buffer;
+  return scryptSync(passphrase, salt, KEY_LEN, { N: 131072, r: 8, p: 1 }) as Buffer;
 }
 
 /**

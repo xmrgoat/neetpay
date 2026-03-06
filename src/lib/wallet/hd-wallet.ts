@@ -22,6 +22,9 @@ export async function getMnemonic(): Promise<string> {
 
   // Dev fallback — never use in production
   if (process.env.DEV_MNEMONIC) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error("FATAL: DEV_MNEMONIC must not be set in production");
+    }
     cachedMnemonic = process.env.DEV_MNEMONIC;
     return cachedMnemonic;
   }

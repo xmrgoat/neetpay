@@ -1,6 +1,21 @@
 import { db } from "@/lib/db";
 import { getGeoFromIp } from "./geo";
 
+function truncateIp(ip: string): string {
+  // IPv4: remove last octet
+  if (ip.includes('.')) {
+    const parts = ip.split('.');
+    parts[3] = '0';
+    return parts.join('.');
+  }
+  // IPv6: remove last 4 groups
+  if (ip.includes(':')) {
+    const parts = ip.split(':');
+    return parts.slice(0, 4).join(':') + '::';
+  }
+  return ip;
+}
+
 interface TrackEventParams {
   userId: string;
   type: "payment_view" | "payment_created" | "payment_paid" | "link_click";
@@ -23,7 +38,7 @@ export async function trackEvent(params: TrackEventParams): Promise<void> {
         userId: params.userId,
         type: params.type,
         paymentId: params.paymentId,
-        ip: params.ip || null,
+        ip: params.ip ? truncateIp(params.ip) : null,
         country: geo.country,
         city: geo.city,
         userAgent: params.userAgent || null,

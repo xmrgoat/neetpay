@@ -20,7 +20,7 @@ export default async function DashboardLayout({
         <Sidebar />
         <main className="flex flex-1 flex-col overflow-hidden">
           {/* Top bar */}
-          <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm lg:px-6">
+          <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 pl-14 pr-4 backdrop-blur-sm lg:pl-6 lg:pr-6">
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
                 Welcome back{session.user.name ? `, ${session.user.name}` : ""}

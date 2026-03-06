@@ -1,21 +1,29 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { authenticateRequest, assertScope } from "@/lib/api/auth";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { db } from "@/lib/db";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ trackId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await authenticateRequest(req);
+    if (!authResult) {
+      return apiError(401, "Unauthorized");
+    }
+
+    if (!assertScope(authResult, "payments:read")) {
+      return apiError(403, "Insufficient permissions", "insufficient_scope");
+    }
+
+    if (authResult.keyType === "publishable") {
+      return apiError(403, "Publishable keys cannot access payment details", "insufficient_scope");
     }
 
     const { trackId } = await params;
 
-    const payment = await db.payment.findUnique({
-      where: { trackId },
+    const payment = await db.payment.findFirst({
+      where: { trackId, userId: authResult.userId },
       select: {
         trackId: true,
         amount: true,
@@ -33,25 +41,15 @@ export async function GET(
         expiresAt: true,
         paidAt: true,
         createdAt: true,
-        userId: true,
       },
     });
 
     if (!payment) {
-      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+      return apiError(404, "Payment not found");
     }
 
-    // Verify ownership
-    if (payment.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { userId: _, ...paymentData } = payment;
-    return NextResponse.json(paymentData);
+    return apiSuccess(payment);
   } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError(500, "Internal server error");
   }
 }

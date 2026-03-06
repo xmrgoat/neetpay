@@ -6,7 +6,7 @@ import { initializeUserWallets } from "@/lib/wallet/wallet-service";
 
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6).max(100),
+  password: z.string().min(12).max(100),
 });
 
 export async function POST(req: Request) {

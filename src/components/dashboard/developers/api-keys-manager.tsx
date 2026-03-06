@@ -10,9 +10,15 @@ import { Copy, Check, Plus, Trash2, Key } from "lucide-react";
 interface MaskedKey {
   id: string;
   name: string;
+  type: string;
   maskedKey: string;
   lastUsed: string | null;
   createdAt: string;
+}
+
+interface RevealedKeys {
+  secretKey: { id: string; key: string };
+  publishableKey: { id: string; key: string };
 }
 
 interface ApiKeysManagerProps {
@@ -23,15 +29,15 @@ export function ApiKeysManager({ keys }: ApiKeysManagerProps) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [copiedKey, setCopiedKey] = useState(false);
+  const [revealedKeys, setRevealedKeys] = useState<RevealedKeys | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaskedKey | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const copyToClipboard = useCallback(async (text: string) => {
+  const copyToClipboard = useCallback(async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
-    setCopiedKey(true);
-    setTimeout(() => setCopiedKey(false), 2000);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   }, []);
 
   async function createKey() {
@@ -47,7 +53,10 @@ export function ApiKeysManager({ keys }: ApiKeysManagerProps) {
 
       if (res.ok) {
         const data = await res.json();
-        setRevealedKey(data.key);
+        setRevealedKeys({
+          secretKey: { id: data.secretKey.id, key: data.secretKey.key },
+          publishableKey: { id: data.publishableKey.id, key: data.publishableKey.key },
+        });
         setNewKeyName("");
         router.refresh();
       }
@@ -74,6 +83,10 @@ export function ApiKeysManager({ keys }: ApiKeysManagerProps) {
     }
   }
 
+  // Group keys by type for display
+  const secretKeys = keys.filter((k) => k.type === "secret");
+  const publishableKeys = keys.filter((k) => k.type === "publishable");
+
   return (
     <>
       <section className="rounded-xl border border-border bg-elevated p-6">
@@ -82,12 +95,8 @@ export function ApiKeysManager({ keys }: ApiKeysManagerProps) {
             API Keys
           </h2>
           <p className="mt-1 text-sm text-foreground-secondary">
-            Use API keys to authenticate requests to the neetpay API. Include
-            your key in the{" "}
-            <code className="font-mono text-xs text-primary">
-              Authorization
-            </code>{" "}
-            header as a Bearer token.
+            Use <strong>secret keys</strong> (<code className="font-mono text-xs text-primary">sk_live_</code>) server-side only.
+            Use <strong>publishable keys</strong> (<code className="font-mono text-xs text-primary">pk_live_</code>) in your frontend SDK.
           </p>
         </div>
 
@@ -110,92 +119,109 @@ export function ApiKeysManager({ keys }: ApiKeysManagerProps) {
             disabled={creating}
           >
             <Plus size={14} />
-            {creating ? "Creating..." : "Generate key"}
+            {creating ? "Creating..." : "Generate key pair"}
           </Button>
         </div>
 
-        {/* Newly created key reveal */}
-        {revealedKey && (
-          <div className="mt-4 rounded-lg border border-warning/30 bg-warning/5 p-4">
-            <p className="text-xs font-medium text-warning mb-2">
-              Copy this key now. It won&apos;t be shown again.
+        {/* Newly created key pair reveal */}
+        {revealedKeys && (
+          <div className="mt-4 rounded-lg border border-warning/30 bg-warning/5 p-4 space-y-3">
+            <p className="text-xs font-medium text-warning">
+              Copy both keys now. The secret key will not be shown again.
             </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 rounded bg-surface px-3 py-2 font-mono text-xs text-foreground break-all select-all">
-                {revealedKey}
-              </code>
-              <button
-                onClick={() => copyToClipboard(revealedKey)}
-                className="shrink-0 rounded-lg p-2 text-foreground-secondary hover:text-foreground hover:bg-surface transition-colors"
-                aria-label={copiedKey ? "Copied" : "Copy key"}
-              >
-                {copiedKey ? (
-                  <Check size={14} className="text-success" />
-                ) : (
-                  <Copy size={14} />
-                )}
-              </button>
+
+            {/* Secret key */}
+            <div>
+              <p className="text-xs text-foreground-secondary mb-1 font-medium">
+                Secret key <span className="text-muted">(server-side only)</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded bg-surface px-3 py-2 font-mono text-xs text-foreground break-all select-all">
+                  {revealedKeys.secretKey.key}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(revealedKeys.secretKey.key, "sk")}
+                  className="shrink-0 rounded-lg p-2 text-foreground-secondary hover:text-foreground hover:bg-surface transition-colors"
+                  aria-label="Copy secret key"
+                >
+                  {copiedField === "sk" ? (
+                    <Check size={14} className="text-success" />
+                  ) : (
+                    <Copy size={14} />
+                  )}
+                </button>
+              </div>
             </div>
+
+            {/* Publishable key */}
+            <div>
+              <p className="text-xs text-foreground-secondary mb-1 font-medium">
+                Publishable key <span className="text-muted">(safe for frontend)</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded bg-surface px-3 py-2 font-mono text-xs text-foreground break-all select-all">
+                  {revealedKeys.publishableKey.key}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(revealedKeys.publishableKey.key, "pk")}
+                  className="shrink-0 rounded-lg p-2 text-foreground-secondary hover:text-foreground hover:bg-surface transition-colors"
+                  aria-label="Copy publishable key"
+                >
+                  {copiedField === "pk" ? (
+                    <Check size={14} className="text-success" />
+                  ) : (
+                    <Copy size={14} />
+                  )}
+                </button>
+              </div>
+            </div>
+
             <button
-              onClick={() => setRevealedKey(null)}
-              className="mt-2 text-xs text-foreground-secondary hover:text-foreground transition-colors"
+              onClick={() => setRevealedKeys(null)}
+              className="text-xs text-foreground-secondary hover:text-foreground transition-colors"
             >
               Dismiss
             </button>
           </div>
         )}
 
-        {/* Key list */}
-        <div className="mt-5 space-y-2">
-          {keys.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-8">
-              <Key size={20} className="text-foreground-secondary mb-2" />
-              <p className="text-sm text-foreground-secondary">
-                No API keys yet. Generate one to get started.
-              </p>
+        {/* Key list — Secret keys */}
+        {secretKeys.length > 0 && (
+          <div className="mt-5">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+              Secret keys
+            </p>
+            <div className="space-y-2">
+              {secretKeys.map((k) => (
+                <KeyRow key={k.id} k={k} onDelete={setDeleteTarget} />
+              ))}
             </div>
-          ) : (
-            keys.map((k) => (
-              <div
-                key={k.id}
-                className="rounded-lg border border-border bg-surface p-4 flex items-center justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{k.name}</p>
-                  <p className="mt-1 font-mono text-xs text-foreground-secondary">
-                    {k.maskedKey}
-                  </p>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-foreground-muted">
-                    <span>
-                      Created{" "}
-                      {new Date(k.createdAt).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    {k.lastUsed && (
-                      <span>
-                        Last used{" "}
-                        {new Date(k.lastUsed).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setDeleteTarget(k)}
-                  className="shrink-0 rounded-lg p-2 text-foreground-secondary hover:text-error hover:bg-error/10 transition-colors"
-                  aria-label={`Delete key ${k.name}`}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Key list — Publishable keys */}
+        {publishableKeys.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+              Publishable keys
+            </p>
+            <div className="space-y-2">
+              {publishableKeys.map((k) => (
+                <KeyRow key={k.id} k={k} onDelete={setDeleteTarget} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {keys.length === 0 && (
+          <div className="mt-5 flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-8">
+            <Key size={20} className="text-foreground-secondary mb-2" />
+            <p className="text-sm text-foreground-secondary">
+              No API keys yet. Generate a key pair to get started.
+            </p>
+          </div>
+        )}
       </section>
 
       {/* Delete confirmation dialog */}
@@ -231,5 +257,61 @@ export function ApiKeysManager({ keys }: ApiKeysManagerProps) {
         </div>
       </Dialog>
     </>
+  );
+}
+
+function KeyRow({
+  k,
+  onDelete,
+}: {
+  k: MaskedKey;
+  onDelete: (k: MaskedKey) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4 flex items-center justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium truncate">{k.name}</p>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+              k.type === "secret"
+                ? "bg-error/10 text-error"
+                : "bg-primary/10 text-primary"
+            }`}
+          >
+            {k.type === "secret" ? "Secret" : "Publishable"}
+          </span>
+        </div>
+        <p className="mt-1 font-mono text-xs text-foreground-secondary">
+          {k.maskedKey}
+        </p>
+        <div className="mt-1 flex items-center gap-3 text-xs text-muted">
+          <span>
+            Created{" "}
+            {new Date(k.createdAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </span>
+          {k.lastUsed && (
+            <span>
+              Last used{" "}
+              {new Date(k.lastUsed).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={() => onDelete(k)}
+        className="shrink-0 rounded-lg p-2 text-foreground-secondary hover:text-error hover:bg-error/10 transition-colors"
+        aria-label={`Delete key ${k.name}`}
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
   );
 }

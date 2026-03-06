@@ -51,10 +51,17 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   if (!user) redirect("/login");
 
+  // The DB value is an encrypted blob — slicing it would be meaningless.
+  // Show a fixed mask to indicate a secret is configured without leaking anything.
+  const maskedSecret = user.webhookSecret
+    ? "whsec_••••••••••••••••••••••••"
+    : null;
+
   const maskedKeys = apiKeys.map((k) => ({
     id: k.id,
     name: k.name,
-    maskedKey: `sk_live_${"*".repeat(24)}${k.key.slice(-4)}`,
+    type: k.type,
+    maskedKey: k.keyPrefix,
     lastUsed: k.lastUsed?.toISOString() ?? null,
     createdAt: k.createdAt.toISOString(),
   }));
@@ -86,7 +93,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <ProfileSection name={user.name} email={user.email} />
           <WebhookSection
             currentUrl={user.webhookUrl}
-            webhookSecret={user.webhookSecret}
+            webhookSecret={maskedSecret}
             recentLogs={serializedLogs}
           />
         </div>

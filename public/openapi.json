@@ -1,0 +1,402 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "neetpay API",
+    "description": "Self-hosted crypto payment gateway. Pay without permission.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "neetpay",
+      "url": "https://neetpay.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://neetpay.io/api/v1",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    { "apiKey": [] },
+    { "bearerAuth": [] }
+  ],
+  "paths": {
+    "/payment/create": {
+      "post": {
+        "operationId": "createPayment",
+        "summary": "Create a payment",
+        "description": "Generate a unique deposit address and payment link. Supports idempotency via the Idempotency-Key header. Accepts both sk_live_ (secret) and pk_live_ (publishable) keys.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": { "type": "string" },
+            "description": "Unique key to prevent duplicate payments on retries"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreatePaymentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/CreatePaymentResponse" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/payment/{trackId}": {
+      "get": {
+        "operationId": "getPayment",
+        "summary": "Get payment details",
+        "description": "Returns full payment details. Requires authentication with a secret key (sk_live_). Publishable keys are rejected.",
+        "parameters": [
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Payment" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/payment/{trackId}/status": {
+      "get": {
+        "operationId": "getPaymentStatus",
+        "summary": "Get payment status (public)",
+        "description": "Public endpoint for polling payment status. No authentication required. Rate-limited to 60 req/min per IP.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "trackId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/PaymentStatus" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/payments": {
+      "get": {
+        "operationId": "listPayments",
+        "summary": "List payments",
+        "description": "Returns a paginated list of your payments with filtering and sorting. Requires a secret key (sk_live_).",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "status", "in": "query", "schema": { "$ref": "#/components/schemas/PaymentStatusEnum" } },
+          { "name": "currency", "in": "query", "schema": { "type": "string" } },
+          { "name": "from_date", "in": "query", "schema": { "type": "integer", "description": "Unix timestamp" } },
+          { "name": "to_date", "in": "query", "schema": { "type": "integer", "description": "Unix timestamp" } },
+          { "name": "sort_by", "in": "query", "schema": { "type": "string", "enum": ["create_date", "pay_date", "amount"], "default": "create_date" } },
+          { "name": "sort_type", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated payment list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "list": { "type": "array", "items": { "$ref": "#/components/schemas/Payment" } },
+                        "meta": {
+                          "type": "object",
+                          "properties": {
+                            "page": { "type": "integer" },
+                            "lastPage": { "type": "integer" },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    },
+                    "message": { "type": "string" },
+                    "error": { "type": "null" },
+                    "status": { "type": "integer" },
+                    "version": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/currencies": {
+      "get": {
+        "operationId": "listCurrencies",
+        "summary": "List supported currencies",
+        "description": "Returns all supported cryptocurrencies and their chain configurations. No authentication required.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "grouped",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["true", "false"] },
+            "description": "Group currencies by symbol (e.g. all USDT variants under one key)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of supported currencies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Currency" }
+                    },
+                    "message": { "type": "string" },
+                    "error": { "type": "null" },
+                    "status": { "type": "integer" },
+                    "version": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API key. Use sk_live_ (secret) for server-side calls, pk_live_ (publishable) for browser SDK. Publishable keys can only create payments."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token using your API key: Authorization: Bearer sk_live_..."
+      }
+    },
+    "schemas": {
+      "ApiEnvelope": {
+        "type": "object",
+        "description": "Standard response envelope for all v1 endpoints",
+        "properties": {
+          "data": { "description": "Response payload" },
+          "message": { "type": "string" },
+          "error": { "type": "null" },
+          "status": { "type": "integer" },
+          "version": { "type": "string", "example": "1.0" }
+        }
+      },
+      "CreatePaymentRequest": {
+        "type": "object",
+        "required": ["amount", "payCurrencyKey"],
+        "properties": {
+          "amount": { "type": "number", "exclusiveMinimum": 0, "description": "Payment amount in fiat currency" },
+          "currency": { "type": "string", "default": "USD", "description": "Fiat currency code (USD, EUR, GBP)" },
+          "payCurrencyKey": { "type": "string", "description": "Crypto to accept: BTC, ETH, SOL, XMR, USDT-ERC20, etc." },
+          "description": { "type": "string", "maxLength": 500 },
+          "lifetimeMinutes": { "type": "integer", "minimum": 5, "maximum": 1440, "default": 30 },
+          "callbackUrl": { "type": "string", "format": "uri", "description": "Per-payment webhook URL. Overrides account-level webhook URL for this payment." },
+          "returnUrl": { "type": "string", "format": "uri", "description": "Redirect URL after successful payment" },
+          "metadata": { "type": "object", "additionalProperties": true, "description": "Custom key-value data attached to the payment" }
+        }
+      },
+      "CreatePaymentResponse": {
+        "type": "object",
+        "properties": {
+          "trackId": { "type": "string", "example": "vp_m1abc_def456" },
+          "payAddress": { "type": "string", "description": "Deposit address" },
+          "chain": { "type": "string", "example": "bitcoin" },
+          "payCurrency": { "type": "string", "example": "BTC" },
+          "network": { "type": "string", "example": "mainnet" },
+          "expectedPayAmount": { "type": "number", "nullable": true },
+          "requiredConfirmations": { "type": "integer" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "explorerUrl": { "type": "string" }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "trackId": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/PaymentStatusEnum" },
+          "chain": { "type": "string", "nullable": true },
+          "payCurrency": { "type": "string", "nullable": true },
+          "payAmount": { "type": "number", "nullable": true },
+          "payAddress": { "type": "string", "nullable": true },
+          "network": { "type": "string", "nullable": true },
+          "txId": { "type": "string", "nullable": true },
+          "senderAddress": { "type": "string", "nullable": true },
+          "confirmations": { "type": "integer" },
+          "requiredConfs": { "type": "integer" },
+          "description": { "type": "string", "nullable": true },
+          "expiresAt": { "type": "string", "format": "date-time", "nullable": true },
+          "paidAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PaymentStatus": {
+        "type": "object",
+        "properties": {
+          "status": { "$ref": "#/components/schemas/PaymentStatusEnum" },
+          "confirmations": { "type": "integer" },
+          "requiredConfs": { "type": "integer" },
+          "txId": { "type": "string", "nullable": true },
+          "paidAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "PaymentStatusEnum": {
+        "type": "string",
+        "enum": ["pending", "confirming", "paid", "expired", "failed", "underpaid", "refunded"]
+      },
+      "Currency": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string", "example": "eth-mainnet" },
+          "symbol": { "type": "string", "example": "ETH" },
+          "name": { "type": "string", "example": "Ethereum" },
+          "chain": { "type": "string", "example": "ethereum" },
+          "network": { "type": "string", "example": "mainnet" },
+          "native": { "type": "boolean" }
+        }
+      },
+      "WebhookPayload": {
+        "type": "object",
+        "description": "Payload sent to your webhook URL (account-level or per-payment callbackUrl) on payment status changes. Signed with HMAC-SHA256 in the X-VoidPay-Signature header.",
+        "properties": {
+          "event": { "type": "string", "enum": ["payment.created", "payment.confirming", "payment.paid", "payment.underpaid", "payment.expired", "payment.failed"] },
+          "trackId": { "type": "string" },
+          "status": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "payCurrency": { "type": "string", "nullable": true },
+          "payAmount": { "type": "number", "nullable": true },
+          "expectedPayAmount": { "type": "number", "nullable": true },
+          "chain": { "type": "string", "nullable": true },
+          "network": { "type": "string", "nullable": true },
+          "txId": { "type": "string", "nullable": true },
+          "paidAt": { "type": "string", "format": "date-time", "nullable": true },
+          "metadata": { "type": "object", "nullable": true }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "object" },
+          "message": { "type": "string" },
+          "error": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "key": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          },
+          "status": { "type": "integer" },
+          "version": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request parameters",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid API key",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+      },
+      "Forbidden": {
+        "description": "Insufficient permissions (e.g. publishable key used on a secret-only endpoint)",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+      },
+      "RateLimited": {
+        "description": "Rate limit exceeded",
+        "headers": {
+          "Retry-After": { "schema": { "type": "integer" }, "description": "Seconds until limit resets" }
+        },
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+      }
+    }
+  },
+  "webhooks": {
+    "paymentEvent": {
+      "post": {
+        "summary": "Payment status webhook",
+        "description": "Sent to your configured webhook URL (or per-payment callbackUrl) when a payment status changes. Verify the X-VoidPay-Signature header using HMAC-SHA256 with your webhook secret.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Webhook processed successfully" }
+        }
+      }
+    }
+  }
+}

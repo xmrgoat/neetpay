@@ -26,17 +26,24 @@ export default async function DevelopersPage() {
     db.webhookLog.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 20,
     }),
   ]);
 
   if (!user) redirect("/login");
 
+  // The DB value is an encrypted blob — slicing it would be meaningless.
+  // Show a fixed mask to indicate a secret is configured without leaking anything.
+  const maskedSecret = user.webhookSecret
+    ? "whsec_••••••••••••••••••••••••"
+    : null;
+
   // Mask API keys for display
   const maskedKeys = apiKeys.map((k) => ({
     id: k.id,
     name: k.name,
-    maskedKey: `sk_live_${"*".repeat(24)}${k.key.slice(-4)}`,
+    type: k.type,
+    maskedKey: k.keyPrefix,
     lastUsed: k.lastUsed?.toISOString() ?? null,
     createdAt: k.createdAt.toISOString(),
   }));
@@ -44,9 +51,13 @@ export default async function DevelopersPage() {
   const serializedLogs = webhookLogs.map((log) => ({
     id: log.id,
     url: log.url,
+    payload: log.payload,
     status: log.status,
     success: log.success,
     duration: log.duration,
+    retryCount: log.retryCount,
+    nextRetryAt: log.nextRetryAt?.toISOString() ?? null,
+    paymentId: log.paymentId,
     createdAt: log.createdAt.toISOString(),
   }));
 
@@ -133,7 +144,7 @@ export default async function DevelopersPage() {
       <div data-animate>
         <WebhookManager
           currentUrl={user.webhookUrl}
-          webhookSecret={user.webhookSecret}
+          webhookSecret={maskedSecret}
           initialLogs={serializedLogs}
         />
       </div>
@@ -200,7 +211,7 @@ function EndpointCard({
           {path}
         </span>
       </div>
-      <p className="mt-2 text-sm text-foreground-muted leading-relaxed">
+      <p className="mt-2 text-sm text-muted leading-relaxed">
         {description}
       </p>
       <pre className="mt-3 flex-1 rounded-lg bg-surface border border-border p-3 overflow-x-auto">

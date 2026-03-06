@@ -95,7 +95,7 @@ export function PaymentModal({
                 {data.payAmount} {data.payCurrency}
               </span>{" "}
               {data.network && (
-                <span className="text-foreground-muted">
+                <span className="text-muted">
                   ({data.network})
                 </span>
               )}
@@ -151,7 +151,7 @@ export function PaymentModal({
         )}
 
         {/* Track ID */}
-        <p className="text-center font-mono text-[10px] text-foreground-muted">
+        <p className="text-center font-mono text-[10px] text-muted">
           {trackId}
         </p>
       </div>

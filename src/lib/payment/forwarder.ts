@@ -33,6 +33,7 @@ export async function processForwardingQueue(): Promise<{
       payCurrency: true,
       chain: true,
       netAmount: true,
+      payAddress: true,
       merchantWalletAddress: true,
       forwardingRetryCount: true,
       forwardingTxId: true,
@@ -82,6 +83,7 @@ async function forwardPayment(payment: {
   payCurrency: string | null;
   chain: string | null;
   netAmount: number;
+  payAddress: string | null;
   merchantWalletAddress: string;
   forwardingTxId: string | null;
 }): Promise<void> {
@@ -98,28 +100,40 @@ async function forwardPayment(payment: {
     return;
   }
 
-  // Lock the row to prevent concurrent forwards
-  await db.payment.update({
-    where: { id: payment.id },
+  // Pessimistic lock: only update if status is still pending/failed.
+  // If another process already grabbed it, updateMany returns count=0.
+  const lockResult = await db.payment.updateMany({
+    where: {
+      id: payment.id,
+      forwardingStatus: { in: ["pending", "failed"] },
+    },
     data: { forwardingStatus: "processing" },
   });
+
+  if (lockResult.count === 0) {
+    // Another process is already handling this payment — skip
+    return;
+  }
 
   const entry = getChainEntry(payment.payCurrency);
   if (!entry?.provider?.send) {
     throw new Error(`Provider ${payment.payCurrency} does not support send()`);
   }
 
-  // Estimate network fee and subtract from netAmount
-  let sendAmount = payment.netAmount;
+  // Validate that net amount covers network fees (provider deducts fee internally during send)
+  const sendAmount = payment.netAmount;
   if (entry.provider.estimateFee) {
     try {
       const networkFee = await entry.provider.estimateFee(
         payment.merchantWalletAddress,
         sendAmount
       );
-      sendAmount = Math.max(0, sendAmount - networkFee);
-    } catch {
-      // Non-fatal — proceed without deduction, provider will handle internally
+      if (sendAmount <= networkFee) {
+        throw new Error(`Amount ${sendAmount} is less than estimated network fee ${networkFee}`);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("Amount")) throw err;
+      // Non-fatal estimation failure — proceed, provider will handle internally
     }
   }
 
@@ -127,8 +141,19 @@ async function forwardPayment(payment: {
     throw new Error("Amount after network fee is zero or negative");
   }
 
+  // Look up the derivation index from the WalletAddress record
+  // instead of hardcoding 0 (which would send from the wrong key)
+  let fromIndex = 0;
+  if (payment.payAddress) {
+    const walletAddress = await db.walletAddress.findFirst({
+      where: { address: payment.payAddress },
+      select: { derivationIndex: true },
+    });
+    fromIndex = walletAddress?.derivationIndex ?? 0;
+  }
+
   const result = await entry.provider.send({
-    fromIndex: 0,
+    fromIndex,
     toAddress: payment.merchantWalletAddress,
     amount: sendAmount,
   });

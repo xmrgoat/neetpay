@@ -106,9 +106,9 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddr
   return (
     <div className="relative min-h-0 overflow-y-auto overflow-x-hidden lg:col-span-3 pb-4 no-scrollbar">
       {/* ── Normal content (wallet + assets) ── */}
-      <div ref={contentRef}>
+      <div ref={contentRef} className="flex flex-col gap-3">
         {/* Wallet card — sticky at top */}
-        <div className="sticky top-0 z-20 pb-2">
+        <div className="sticky top-0 z-20 pb-1">
           <WalletCard
             totalUsd={totalUsd}
             change24h={change24h}
@@ -119,10 +119,10 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddr
             onSwapClick={() => switchPanel("swap")}
           />
           {/* Fade mask */}
-          <div className="pointer-events-none absolute -bottom-4 left-0 right-0 h-6 bg-gradient-to-b from-surface to-transparent" />
+          <div className="pointer-events-none absolute -bottom-3 left-0 right-0 h-5 bg-gradient-to-b from-surface to-transparent" />
         </div>
         {/* Assets */}
-        <div className="relative mt-1">
+        <div className="relative">
           <CryptoAssets holdings={holdings} />
         </div>
       </div>

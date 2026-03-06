@@ -23,6 +23,7 @@ export interface Payment {
   chain: string | null;
   payCurrency: string | null;
   payAmount: number | null;
+  expectedPayAmount: number | null;
   payAddress: string | null;
   network: string | null;
   tokenContract: string | null;
@@ -75,11 +76,14 @@ export interface WalletAddress {
 export interface WebhookLog {
   id: string;
   userId: string;
+  paymentId: string | null;
   url: string;
   payload: string;
   status: number;
   success: boolean;
   duration: number;
+  retryCount: number;
+  nextRetryAt: Date | null;
   createdAt: Date;
 }
 

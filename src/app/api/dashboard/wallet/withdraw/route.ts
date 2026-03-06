@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { withdraw } from "@/lib/wallet/wallet-service";
 import { CHAIN_REGISTRY } from "@/lib/chains/registry";
-import type { WalletWithdrawRequest, WalletWithdrawResponse } from "@/types/wallet";
+import type { WalletWithdrawResponse } from "@/types/wallet";
+
+const withdrawSchema = z.object({
+  currencyKey: z.string().min(1).max(20),
+  address: z.string().min(10).max(200),
+  amount: z.number().positive(),
+});
 
 /**
  * POST /api/dashboard/wallet/withdraw
@@ -16,14 +23,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { currencyKey, address, amount } = body as WalletWithdrawRequest;
-
-  if (!currencyKey || !address || !amount || amount <= 0) {
+  const parsed = withdrawSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "currencyKey, address, and a positive amount are required" },
+      { error: parsed.error.issues[0].message },
       { status: 400 },
     );
   }
+  const { currencyKey, address, amount } = parsed.data;
 
   const entry = CHAIN_REGISTRY[currencyKey];
   if (!entry) {

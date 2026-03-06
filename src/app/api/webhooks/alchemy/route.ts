@@ -31,7 +31,10 @@ export async function POST(req: Request) {
     const rawBody = await req.text();
     const signature = req.headers.get("x-alchemy-signature") ?? "";
 
-    if (ALCHEMY_SIGNING_KEY && !validateAlchemySignature(rawBody, signature)) {
+    if (!ALCHEMY_SIGNING_KEY) {
+      return NextResponse.json({ error: "Webhook signing not configured" }, { status: 503 });
+    }
+    if (!validateAlchemySignature(rawBody, signature)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 

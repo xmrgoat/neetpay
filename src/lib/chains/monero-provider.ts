@@ -1,7 +1,7 @@
 import type { ChainProvider, PaymentCheck, GeneratedAddress } from "./types";
 
 const WALLET_RPC_URL =
-  process.env.MONERO_WALLET_RPC_URL || "http://localhost:18082/json_rpc";
+  process.env.MONERO_WALLET_RPC_URL || "http://localhost:18083/json_rpc";
 const RPC_USER = process.env.MONERO_WALLET_RPC_USER || "";
 const RPC_PASS = process.env.MONERO_WALLET_RPC_PASSWORD || "";
 const REQUIRED_CONFIRMATIONS = 10;
@@ -9,6 +9,8 @@ const REQUIRED_CONFIRMATIONS = 10;
 /**
  * Call monero-wallet-rpc JSON-RPC method.
  */
+const RPC_TIMEOUT_MS = 30_000; // 30s timeout for wallet-rpc calls
+
 async function walletRpc(
   method: string,
   params: Record<string, unknown> = {}
@@ -22,22 +24,35 @@ async function walletRpc(
     headers["Authorization"] = `Basic ${credentials}`;
   }
 
-  const res = await fetch(WALLET_RPC_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "0",
-      method,
-      params,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS);
 
-  const json = await res.json();
-  if (json.error) {
-    throw new Error(`Monero RPC error: ${json.error.message}`);
+  try {
+    const res = await fetch(WALLET_RPC_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "0",
+        method,
+        params,
+      }),
+      signal: controller.signal,
+    });
+
+    const json = await res.json();
+    if (json.error) {
+      throw new Error(`Monero RPC error: ${json.error.message}`);
+    }
+    return json.result;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Monero RPC timeout after ${RPC_TIMEOUT_MS}ms: ${method}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return json.result;
 }
 
 export function createMoneroProvider(): ChainProvider {

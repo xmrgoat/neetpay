@@ -11,7 +11,7 @@ export default async function PaymentLinksPage() {
   const payments = await db.payment.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: 200,
     select: {
       trackId: true,
       amount: true,

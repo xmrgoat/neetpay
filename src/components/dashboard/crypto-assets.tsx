@@ -49,10 +49,10 @@ const CRYPTO_ICONS: Record<string, string> = {
 type SortMode = "value" | "name" | "change" | "default";
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: "default", label: "Par défaut" },
-  { value: "value", label: "Par valeur" },
-  { value: "name", label: "Par nom" },
-  { value: "change", label: "Par variation" },
+  { value: "default", label: "Default" },
+  { value: "value", label: "By value" },
+  { value: "name", label: "By name" },
+  { value: "change", label: "By change" },
 ];
 
 const SETTINGS_KEY = "neetpay-assets-settings";
@@ -181,7 +181,7 @@ function SettingsPanel({
       >
         {/* Sort */}
         <div className="px-3 pt-2.5 pb-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted/60">Trier par</p>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted/60">Sort by</p>
         </div>
         {SORT_OPTIONS.map((opt) => (
           <button
@@ -203,12 +203,12 @@ function SettingsPanel({
 
         {/* Toggles */}
         <div className="px-3 pt-1 pb-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted/60">Affichage</p>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted/60">Display</p>
         </div>
 
         <ToggleRow
           icon={<EyeOff className="h-3 w-3" />}
-          label="Masquer solde à 0"
+          label="Hide zero balances"
           active={settings.hideZeroBalance}
           onToggle={() => toggle("hideZeroBalance")}
         />
@@ -220,13 +220,13 @@ function SettingsPanel({
         />
         <ToggleRow
           icon={<Hash className="h-3 w-3" />}
-          label="% du portfolio"
+          label="Portfolio %"
           active={settings.showPortfolioPct}
           onToggle={() => toggle("showPortfolioPct")}
         />
         <ToggleRow
           icon={<ChevronDown className="h-3 w-3" />}
-          label="Mode compact"
+          label="Compact mode"
           active={settings.compactMode}
           onToggle={() => toggle("compactMode")}
         />
@@ -462,7 +462,7 @@ export function CryptoAssets({ holdings, expanded }: CryptoAssetsProps) {
       <div ref={containerRef} className="rounded-xl border border-border bg-background overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3">
-          <h3 className="text-[13px] font-semibold text-foreground">Solde des actifs</h3>
+          <h3 className="text-[13px] font-semibold text-foreground">Asset Balances</h3>
           <div className="flex items-center gap-2">
             {/* Settings button */}
             <div className="relative">
@@ -614,7 +614,7 @@ export function CryptoAssets({ holdings, expanded }: CryptoAssetsProps) {
           })}
           {processed.length === 0 && (
             <div className="px-4 py-6 text-center text-[12px] text-muted">
-              {settings.hideZeroBalance ? "Aucun actif avec un solde" : "Aucun actif trouvé"}
+              {settings.hideZeroBalance ? "No assets with a balance" : "No assets found"}
             </div>
           )}
         </div>

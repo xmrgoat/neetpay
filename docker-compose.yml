@@ -3,10 +3,10 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: voidpay
-      POSTGRES_PASSWORD: voidpay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voidpay}
       POSTGRES_DB: voidpay
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -20,7 +20,7 @@ services:
       --no-igd
       --fixed-difficulty=1
     ports:
-      - "18081:18081"
+      - "127.0.0.1:18081:18081"
     volumes:
       - monero_data:/home/monero/.bitmonero
 
@@ -29,13 +29,13 @@ services:
     command: >
       --stagenet
       --daemon-address=monerod:18081
-      --rpc-bind-port=18082
+      --rpc-bind-port=18083
       --rpc-bind-ip=0.0.0.0
       --confirm-external-bind
       --wallet-dir=/wallet
-      --disable-rpc-login
+      --rpc-login=${MONERO_RPC_USER:-monero}:${MONERO_RPC_PASS:-changeme}
     ports:
-      - "18082:18082"
+      - "127.0.0.1:18083:18083"
     volumes:
       - monero_wallet:/wallet
     depends_on:

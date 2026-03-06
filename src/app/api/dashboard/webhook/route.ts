@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { encryptField } from "@/lib/crypto/field-cipher";
 
 const webhookSchema = z.object({
   url: z.string().url(),
@@ -32,18 +33,27 @@ export async function PATCH(req: Request) {
       select: { webhookSecret: true },
     });
 
-    const webhookSecret =
-      user?.webhookSecret || `whsec_${crypto.randomBytes(24).toString("hex")}`;
+    // If a secret already exists (encrypted blob), keep it — don't rotate.
+    // If not, generate a new raw secret, encrypt it, and store the encrypted form.
+    const rawSecret = user?.webhookSecret
+      ? null // already set — don't regenerate
+      : `whsec_${crypto.randomBytes(24).toString("hex")}`;
+
+    const updateData: { webhookUrl: string; webhookSecret?: string } = {
+      webhookUrl: parsed.data.url,
+    };
+    if (rawSecret) {
+      updateData.webhookSecret = encryptField(rawSecret);
+    }
 
     await db.user.update({
       where: { id: session.user.id },
-      data: {
-        webhookUrl: parsed.data.url,
-        webhookSecret,
-      },
+      data: updateData,
     });
 
-    return NextResponse.json({ success: true, webhookSecret });
+    // Return the raw secret only when first generated (shown once to the user).
+    // If the secret already existed, return null — the UI already has the masked version.
+    return NextResponse.json({ success: true, webhookSecret: rawSecret });
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },

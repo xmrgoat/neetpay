@@ -126,22 +126,67 @@ export function createTronProvider(): ChainProvider {
           tokenContract,
         };
       } else {
-        // Native TRX balance check
-        const account = (await tronRpc("/wallet/getaccount", {
-          address: hexAddress,
-          visible: false,
-        })) as { balance?: number };
+        // Native TRX: fetch recent incoming transactions
+        const txResult = (await tronRpc(
+          "/v1/accounts/" + address + "/transactions",
+          { only_to: true, limit: 1, order_by: "block_timestamp,desc" }
+        )) as {
+          data?: Array<{
+            txID: string;
+            block_timestamp: number;
+            raw_data: {
+              contract: Array<{
+                parameter: {
+                  value: {
+                    amount?: number;
+                    owner_address?: string;
+                  };
+                };
+                type: string;
+              }>;
+            };
+          }>;
+        };
 
-        if (!account.balance || account.balance === 0) return null;
+        if (!txResult.data || txResult.data.length === 0) return null;
 
-        const amount = account.balance / 1_000_000; // TRX has 6 decimals (sun)
+        const tx = txResult.data[0];
+        const contractData = tx.raw_data.contract[0]?.parameter?.value;
+        const amountSun = contractData?.amount ?? 0;
+        const amount = amountSun / 1_000_000;
+
+        if (amount <= 0) return null;
+
+        // Get real confirmation count
+        const txInfo = (await tronRpc("/wallet/gettransactioninfobyid", {
+          value: tx.txID,
+        })) as { blockNumber?: number };
+
+        const currentBlock = (await tronRpc("/wallet/getnowblock")) as {
+          block_header: { raw_data: { number: number } };
+        };
+
+        const confirmations = txInfo.blockNumber
+          ? currentBlock.block_header.raw_data.number - txInfo.blockNumber
+          : 0;
+
+        // Decode the sender address from hex
+        const ownerHex = contractData?.owner_address;
+        let from = "unknown";
+        if (ownerHex) {
+          try {
+            from = (TronWeb as any).address.fromHex(ownerHex);
+          } catch {
+            from = ownerHex;
+          }
+        }
 
         return {
-          txHash: "",
+          txHash: tx.txID,
           amount,
-          confirmations: REQUIRED_CONFIRMATIONS,
-          from: "unknown",
-          timestamp: Math.floor(Date.now() / 1000),
+          confirmations,
+          from,
+          timestamp: Math.floor(tx.block_timestamp / 1000),
         };
       }
     },

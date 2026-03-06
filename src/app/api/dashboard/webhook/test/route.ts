@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { decryptField } from "@/lib/crypto/field-cipher";
 
 /** Send a test webhook to the configured URL */
 export async function POST() {
@@ -29,9 +30,14 @@ export async function POST() {
       timestamp: new Date().toISOString(),
     });
 
-    const signature = user.webhookSecret
+    // Decrypt the stored webhook secret before using it for HMAC signing
+    const rawSecret = user.webhookSecret
+      ? decryptField(user.webhookSecret)
+      : null;
+
+    const signature = rawSecret
       ? crypto
-          .createHmac("sha256", user.webhookSecret)
+          .createHmac("sha256", rawSecret)
           .update(payload)
           .digest("hex")
       : undefined;

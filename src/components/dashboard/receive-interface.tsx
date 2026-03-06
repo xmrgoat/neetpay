@@ -34,6 +34,8 @@ const CHAIN_LABELS: Record<string, string> = {
   BNB: "BNB Smart Chain",
   LTC: "Litecoin Network",
   DOGE: "Dogecoin Network",
+  TON: "TON Network",
+  XRP: "XRP Ledger",
   MATIC: "Polygon Network",
   ARB: "Arbitrum Network",
   OP: "Optimism Network",

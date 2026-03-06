@@ -162,20 +162,55 @@ export function createEvmProvider(chainName: string): ChainProvider {
           tokenContract,
         };
       } else {
-        // Native ETH/MATIC/BNB: check balance
-        const balance = await client.getBalance({ address: addr });
-        if (balance === 0n) return null;
+        // Native ETH/MATIC/BNB: use Alchemy asset transfers to find real tx
+        const alchemyUrl = getAlchemyUrl(chainName);
+        const transfersRes = await fetch(alchemyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "alchemy_getAssetTransfers",
+            params: [
+              {
+                toAddress: addr,
+                category: ["external"],
+                order: "desc",
+                maxCount: "0x1",
+                withMetadata: true,
+              },
+            ],
+          }),
+        });
 
-        // Get latest incoming transaction
-        // Note: for production, use Alchemy's alchemy_getAssetTransfers
-        const amount = parseFloat(formatEther(balance));
+        const transfersData = (await transfersRes.json()) as {
+          result?: {
+            transfers: Array<{
+              hash: string;
+              blockNum: string;
+              value: number;
+              from: string;
+              metadata: { blockTimestamp: string };
+            }>;
+          };
+        };
+
+        const transfers = transfersData.result?.transfers;
+        if (!transfers || transfers.length === 0) return null;
+
+        const tx = transfers[0];
+        const txBlockNumber = BigInt(tx.blockNum);
+        const currentBlock = await client.getBlockNumber();
+        const confirmations = Number(currentBlock - txBlockNumber);
 
         return {
-          txHash: "",
-          amount,
-          confirmations: config.confirmations, // assume confirmed if balance exists
-          from: "unknown",
-          timestamp: Math.floor(Date.now() / 1000),
+          txHash: tx.hash,
+          amount: tx.value,
+          confirmations,
+          from: tx.from,
+          timestamp: Math.floor(
+            new Date(tx.metadata.blockTimestamp).getTime() / 1000
+          ),
         };
       }
     },

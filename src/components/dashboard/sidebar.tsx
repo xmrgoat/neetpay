@@ -4,42 +4,41 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
 import {
   LayoutDashboard,
-  Wallet,
+  WalletMinimal,
+  Banknote,
   ArrowLeftRight,
-  Repeat,
-  Link as LinkIcon,
-  BarChart3,
-  Code,
-  Settings,
-  HelpCircle,
-  ChevronRight,
-  ChevronLeft,
+  Link2,
+  ReceiptText,
+  HeartHandshake,
+  ChartLine,
+  Share2,
+  Terminal,
+  Settings2,
   Menu,
   X,
-  BadgeCheck,
   LogOut,
-  ShieldCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
-const MAIN_NAV = [
+const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Wallet", icon: Wallet, href: "/dashboard/wallet" },
-  { label: "Swap", icon: Repeat, href: "/dashboard/swap" },
-  { label: "Payments", icon: ArrowLeftRight, href: "/dashboard/payments" },
-  { label: "Payment Links", icon: LinkIcon, href: "/dashboard/links" },
-  { label: "Analytics", icon: BarChart3, href: "/dashboard/analytics" },
-] as const;
-
-const OTHER_NAV = [
-  { label: "Developers", icon: Code, href: "/dashboard/developers" },
+  { label: "Payments", icon: Banknote, href: "/dashboard/payments" },
+  { label: "Payment Links", icon: Link2, href: "/dashboard/links" },
+  { label: "Invoices", icon: ReceiptText, href: "/dashboard/invoices" },
+  { label: "Donations", icon: HeartHandshake, href: "/dashboard/donations" },
+  { label: "Wallet", icon: WalletMinimal, href: "/dashboard/wallet" },
+  { label: "Swap", icon: ArrowLeftRight, href: "/dashboard/swap" },
+  { label: "Analytics", icon: ChartLine, href: "/dashboard/analytics" },
+  { label: "Referrals", icon: Share2, href: "/dashboard/referrals" },
+  { label: "Developers", icon: Terminal, href: "/dashboard/developers" },
+  { label: "Settings", icon: Settings2, href: "/dashboard/settings" },
 ] as const;
 
 function getStoredCollapsed(): boolean {
@@ -57,7 +56,8 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const navRef = useRef<HTMLDivElement>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCollapsed(getStoredCollapsed());
@@ -68,7 +68,9 @@ export function Sidebar() {
     if (!mounted) return;
     try {
       localStorage.setItem(STORAGE_KEY, String(collapsed));
-    } catch { /* ignore */ }
+    } catch {
+      /* */
+    }
   }, [collapsed, mounted]);
 
   useEffect(() => {
@@ -77,225 +79,238 @@ export function Sidebar() {
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showUserMenu]);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => !prev);
   }, []);
-
-  useGSAP(
-    () => {
-      if (!navRef.current) return;
-      const items = navRef.current.querySelectorAll("[data-nav-item]");
-      if (!items.length) return;
-      gsap.fromTo(
-        items,
-        { opacity: 0, x: -8 },
-        { opacity: 1, x: 0, duration: 0.3, stagger: 0.04, ease: "power2.out" },
-      );
-    },
-    { scope: navRef, dependencies: [mounted] },
-  );
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   }
 
-  function NavItem({ item }: { item: { label: string; icon: React.ComponentType<{ className?: string }>; href: string } }) {
+  // ─── Nav Item ─────────────────────────────────────────────────────────────
+
+  function NavItem({
+    item,
+    mobile,
+  }: {
+    item: {
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      href: string;
+    };
+    mobile?: boolean;
+  }) {
     const active = isActive(item.href);
+
     return (
       <Link
         href={item.href}
-        data-nav-item
+        title={collapsed && !mobile ? item.label : undefined}
+        onClick={mobile ? () => setMobileOpen(false) : undefined}
         className={cn(
-          "relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
+          "sidebar-item group relative flex items-center gap-3 rounded-lg text-[13.5px]",
+          "transition-[background-color,color] duration-[140ms] ease-out",
+          "h-[38px]",
+          collapsed && !mobile ? "justify-center px-0 mx-0.5" : "px-3",
           active
-            ? "bg-primary-muted text-primary font-medium"
-            : "text-foreground-secondary hover:text-foreground hover:bg-surface",
+            ? "font-medium text-primary"
+            : "text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground",
         )}
       >
         {active && (
           <span
-            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary transition-all duration-300"
+            className="absolute left-0 top-[7px] bottom-[7px] w-[2px] rounded-full bg-primary"
             aria-hidden
           />
         )}
-        <item.icon className="h-[18px] w-[18px] shrink-0" />
-        <span
+        <item.icon
           className={cn(
-            "truncate text-sm transition-[opacity,width] duration-200",
-            collapsed
-              ? "w-0 opacity-0 pointer-events-none"
-              : "w-auto opacity-100",
+            "shrink-0 h-[19px] w-[19px]",
+            active ? "text-primary" : "",
           )}
-        >
-          {item.label}
-        </span>
+        />
+        {(!collapsed || mobile) && (
+          <span className="truncate">{item.label}</span>
+        )}
       </Link>
     );
   }
 
-  function SectionLabel({ text }: { text: string }) {
+  // ─── Sidebar Content ──────────────────────────────────────────────────────
+
+  function SidebarNav({ mobile }: { mobile?: boolean }) {
     return (
-      <p
-        className={cn(
-          "mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted transition-[opacity] duration-200",
-          collapsed && "opacity-0",
-        )}
-      >
-        {text}
-      </p>
+      <>
+        {/* Logo */}
+        <div
+          className={cn(
+            "flex shrink-0 items-center border-b border-border",
+            collapsed && !mobile ? "h-14 justify-center" : "h-14 px-3",
+          )}
+        >
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 font-heading font-semibold"
+            onClick={mobile ? () => setMobileOpen(false) : undefined}
+          >
+            <Image
+              src="/image/logo1.png"
+              alt="neetpay"
+              width={22}
+              height={22}
+              className="shrink-0"
+            />
+            {(!collapsed || mobile) && (
+              <span className="text-[15px] tracking-[-0.01em]">
+                <span className="text-foreground">neet</span>
+                <span className="text-primary">pay</span>
+              </span>
+            )}
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 pt-3 pb-2 no-scrollbar">
+          <div className="flex flex-col gap-0.5">
+            {NAV_ITEMS.map((item) => (
+              <NavItem key={item.href} item={item} mobile={mobile} />
+            ))}
+          </div>
+        </nav>
+
+        {/* Bottom — User + Collapse */}
+        <div className="mt-auto shrink-0 border-t border-border px-3 pt-3 pb-3.5">
+          {/* User profile row */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className={cn(
+                "w-full flex items-center rounded-lg cursor-pointer",
+                "transition-[background-color] duration-[140ms] ease-out",
+                "hover:bg-white/[0.05]",
+                collapsed && !mobile
+                  ? "justify-center h-[40px] px-0 mx-0.5"
+                  : "gap-2.5 px-3 h-[40px]",
+              )}
+            >
+              {/* Avatar */}
+              <div
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.12] text-[11px] font-medium uppercase text-white/70"
+              >
+                {session?.user?.name?.charAt(0) ?? session?.user?.email?.charAt(0) ?? "U"}
+              </div>
+
+              {(!collapsed || mobile) && (
+                <>
+                  <span className="truncate text-[13px] text-foreground-secondary">
+                    {session?.user?.name ?? session?.user?.email ?? "User"}
+                  </span>
+                  <LogOut
+                    className="ml-auto h-3.5 w-3.5 shrink-0 text-white/20 transition-colors hover:text-foreground-secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      signOut({ callbackUrl: "/login" });
+                    }}
+                  />
+                </>
+              )}
+            </button>
+
+            {/* Collapsed popover */}
+            {showUserMenu && collapsed && !mobile && (
+              <div
+                className="absolute left-full top-0 ml-2 w-[140px] rounded-lg bg-elevated border border-border shadow-lg z-50 py-1"
+              >
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-[13px] text-foreground-secondary hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                >
+                  Settings
+                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-error hover:bg-error/[0.06] transition-colors"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign out
+                </button>
+              </div>
+            )}
+
+            {/* Expanded popover */}
+            {showUserMenu && !collapsed && (
+              <div
+                className="absolute bottom-full left-0 right-0 mb-2 rounded-lg bg-elevated border border-border shadow-lg z-50 py-1"
+              >
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-[11px] text-muted truncate">
+                    {session?.user?.email ?? ""}
+                  </p>
+                </div>
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-[13px] text-foreground-secondary hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                >
+                  Profile
+                </Link>
+                <div className="border-t border-border py-1">
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-error hover:bg-error/[0.06] transition-colors"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Collapse toggle — desktop only */}
+          {!mobile && mounted && (
+            <button
+              onClick={toggleCollapsed}
+              className={cn(
+                "mt-1.5 flex h-[28px] w-full items-center justify-center rounded-lg",
+                "text-white/30 hover:text-white/50 transition-colors duration-[140ms]",
+              )}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-[15px] w-[15px]" />
+              ) : (
+                <PanelLeftClose className="h-[15px] w-[15px]" />
+              )}
+            </button>
+          )}
+        </div>
+      </>
     );
   }
 
-  const sidebarContent = (
-    <>
-      {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight"
-        >
-          <Image src="/image/logo1.png" alt="neetpay" width={26} height={26} className="shrink-0" />
-          {collapsed ? (
-            <span className={cn("transition-[opacity,width] duration-200 w-0 opacity-0 pointer-events-none")} />
-          ) : (
-            <span className="transition-[opacity,width] duration-200">
-              <span className="text-foreground">neet</span>
-              <span className="text-primary">pay</span>
-            </span>
-          )}
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <nav ref={navRef} className="flex-1 overflow-y-auto px-3 py-5">
-        <SectionLabel text="Main" />
-        <div className="flex flex-col gap-0.5">
-          {MAIN_NAV.map((item) => (
-            <NavItem key={item.href} item={item} />
-          ))}
-        </div>
-
-        <div className="my-4 h-px bg-border" />
-
-        <SectionLabel text="Other" />
-        <div className="flex flex-col gap-0.5">
-          {OTHER_NAV.map((item) => (
-            <NavItem key={item.href} item={item} />
-          ))}
-        </div>
-      </nav>
-
-      {/* Bottom */}
-      <div className="mt-auto shrink-0 border-t border-border p-3">
-        {/* Security */}
-        <Link
-          href="/dashboard/security"
-          className={cn(
-            "relative flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
-            collapsed ? "justify-center" : "px-3 gap-3",
-            isActive("/dashboard/security") && "bg-primary-muted text-primary font-medium",
-          )}
-        >
-          {isActive("/dashboard/security") && (
-            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
-          )}
-          <ShieldCheck className="h-[18px] w-[18px] shrink-0" />
-          <span className={cn(
-            "truncate text-sm transition-[opacity,width] duration-200",
-            collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
-          )}>
-            Security
-          </span>
-        </Link>
-
-        {/* Settings */}
-        <Link
-          href="/dashboard/settings"
-          className={cn(
-            "relative flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
-            collapsed ? "justify-center" : "px-3 gap-3",
-            isActive("/dashboard/settings") && "bg-primary-muted text-primary font-medium",
-          )}
-        >
-          {isActive("/dashboard/settings") && (
-            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
-          )}
-          <Settings className="h-[18px] w-[18px] shrink-0" />
-          <span className={cn(
-            "truncate text-sm transition-[opacity,width] duration-200",
-            collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
-          )}>
-            Settings
-          </span>
-        </Link>
-
-        {/* Support */}
-        <Link
-          href="/dashboard/support"
-          className={cn(
-            "relative flex h-9 items-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground hover:bg-surface",
-            collapsed ? "justify-center" : "px-3 gap-3",
-            isActive("/dashboard/support") && "bg-primary-muted text-primary font-medium",
-          )}
-        >
-          {isActive("/dashboard/support") && (
-            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
-          )}
-          <HelpCircle className="h-[18px] w-[18px] shrink-0" />
-          <span className={cn(
-            "truncate text-sm transition-[opacity,width] duration-200",
-            collapsed ? "w-0 opacity-0 pointer-events-none" : "w-auto opacity-100",
-          )}>
-            Support
-          </span>
-        </Link>
-
-        {/* Divider */}
-        <div className="my-2 h-px bg-border" />
-
-        {/* User profile */}
-        <div
-          className={cn(
-            "flex items-center rounded-lg transition-colors duration-150",
-            collapsed ? "justify-center p-1.5" : "gap-3 px-3 py-2",
-          )}
-        >
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-white text-xs font-bold uppercase">
-              {session?.user?.name?.charAt(0) ?? "U"}
-            </div>
-            <BadgeCheck className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 text-primary fill-background" />
-          </div>
-
-          {/* Name + email */}
-          <div className={cn(
-            "min-w-0 flex-1 transition-[opacity,width] duration-200",
-            collapsed ? "w-0 opacity-0 pointer-events-none hidden" : "w-auto opacity-100",
-          )}>
-            <div className="flex items-center gap-1">
-              <p className="truncate text-sm font-medium text-foreground leading-tight">
-                {session?.user?.name ?? "User"}
-              </p>
-            </div>
-            <p className="truncate text-[11px] text-muted leading-tight">
-              {session?.user?.email ?? ""}
-            </p>
-          </div>
-
-          {/* Chevron */}
-          <ChevronRight className={cn(
-            "h-3.5 w-3.5 shrink-0 text-muted transition-[opacity,width] duration-200",
-            collapsed ? "w-0 opacity-0 pointer-events-none hidden" : "w-auto opacity-100",
-          )} />
-        </div>
-      </div>
-    </>
-  );
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -314,7 +329,7 @@ export function Sidebar() {
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden animate-fade-in"
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden animate-fade-in"
           onClick={() => setMobileOpen(false)}
           aria-hidden
         />
@@ -323,166 +338,32 @@ export function Sidebar() {
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col border-r border-border bg-background transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:hidden",
+          "fixed left-0 top-0 z-50 flex h-dvh w-[280px] flex-col border-r border-border bg-[#0e0e12] transition-transform duration-300 lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
+        style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
       >
         <button
           onClick={() => setMobileOpen(false)}
-          className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary hover:text-foreground transition-colors"
+          className="absolute right-3 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary hover:text-foreground transition-colors"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
         </button>
-
-        <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight"
-            onClick={() => setMobileOpen(false)}
-          >
-            <Image src="/image/logo1.png" alt="neetpay" width={26} height={26} className="shrink-0" />
-            <span>
-              <span className="text-foreground">neet</span>
-              <span className="text-primary">pay</span>
-            </span>
-          </Link>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-3 py-5">
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Main</p>
-          <ul className="flex flex-col gap-0.5">
-            {MAIN_NAV.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
-                      active
-                        ? "bg-primary-muted text-primary font-medium"
-                        : "text-foreground-secondary hover:text-foreground hover:bg-surface",
-                    )}
-                  >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
-                    )}
-                    <item.icon className="h-[18px] w-[18px] shrink-0" />
-                    <span className="truncate text-sm">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="my-4 h-px bg-border" />
-
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Other</p>
-          <ul className="flex flex-col gap-0.5">
-            {OTHER_NAV.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
-                      active
-                        ? "bg-primary-muted text-primary font-medium"
-                        : "text-foreground-secondary hover:text-foreground hover:bg-surface",
-                    )}
-                  >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
-                    )}
-                    <item.icon className="h-[18px] w-[18px] shrink-0" />
-                    <span className="truncate text-sm">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="mt-auto shrink-0 border-t border-border p-3">
-          <Link
-            href="/dashboard/security"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
-              isActive("/dashboard/security")
-                ? "bg-primary-muted text-primary font-medium"
-                : "text-foreground-secondary hover:text-foreground hover:bg-surface",
-            )}
-          >
-            {isActive("/dashboard/security") && (
-              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" aria-hidden />
-            )}
-            <ShieldCheck className="h-[18px] w-[18px] shrink-0" />
-            <span className="truncate">Security</span>
-          </Link>
-          <Link
-            href="/dashboard/settings"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
-              isActive("/dashboard/settings")
-                ? "bg-primary-muted text-primary font-medium"
-                : "text-foreground-secondary hover:text-foreground hover:bg-surface",
-            )}
-          >
-            <Settings className="h-[18px] w-[18px] shrink-0" />
-            <span className="truncate">Settings</span>
-          </Link>
-          <Link
-            href="/dashboard/support"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
-              isActive("/dashboard/support")
-                ? "bg-primary-muted text-primary font-medium"
-                : "text-foreground-secondary hover:text-foreground hover:bg-surface",
-            )}
-          >
-            <HelpCircle className="h-[18px] w-[18px] shrink-0" />
-            <span className="truncate">Support</span>
-          </Link>
-
-          <div className="my-2 h-px bg-border" />
-
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
-            <div className="relative shrink-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-primary text-white text-xs font-bold uppercase">
-                {session?.user?.name?.charAt(0) ?? "U"}
-              </div>
-              <BadgeCheck className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 text-primary fill-background" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground leading-tight">
-                {session?.user?.name ?? "User"}
-              </p>
-              <p className="truncate text-[11px] text-muted leading-tight">
-                {session?.user?.email ?? ""}
-              </p>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
-          </div>
-        </div>
+        <SidebarNav mobile />
       </aside>
 
       {/* Desktop sidebar */}
       <aside
+        className="hidden h-dvh shrink-0 flex-col border-r border-border bg-[#0e0e12] lg:flex"
         style={{
-          width: mounted ? (collapsed ? 72 : 240) : 240,
-          minWidth: mounted ? (collapsed ? 72 : 240) : 240,
-          transition: "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+          width: mounted ? (collapsed ? 60 : 240) : 240,
+          minWidth: mounted ? (collapsed ? 60 : 240) : 240,
+          transition:
+            "width 250ms cubic-bezier(0.16, 1, 0.3, 1), min-width 250ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
-        className="hidden h-dvh flex-col border-r border-border bg-background lg:flex shrink-0"
       >
-        {sidebarContent}
+        <SidebarNav />
       </aside>
     </>
   );

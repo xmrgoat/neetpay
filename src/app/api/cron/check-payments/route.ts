@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { runPollingCycle } from "@/lib/payment/poller";
 
-const CRON_SECRET = process.env.CRON_SECRET || "";
+const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * Cron endpoint for polling BTC/TRON/XMR payments.
  * Should be called every 30-60 seconds.
  */
 export async function GET(req: Request) {
-  // Verify cron secret to prevent unauthorized calls
-  if (CRON_SECRET) {
-    const authHeader = req.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 503 });
+  }
+  const authHeader = req.headers.get("authorization");
+  const expected = Buffer.from(`Bearer ${CRON_SECRET}`);
+  const actual = Buffer.from(authHeader || "");
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
