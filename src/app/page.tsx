@@ -191,9 +191,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Right crop — gradient fade to hide Gemini logo */}
+        {/* Right crop — gradient fade to hide Gemini logo (desktop only) */}
         <div
-          className="absolute inset-y-0 right-0 z-[2] w-[15%]"
+          className="absolute inset-y-0 right-0 z-[2] w-[15%] hidden md:block"
           style={{
             background:
               "linear-gradient(to right, transparent, black 70%)",
@@ -627,7 +627,7 @@ export default function HomePage() {
               <span className="text-white/40">.</span>
             </p>
           </div>
-          <div className="h-[50vh]">
+          <div className="h-[50vh] pointer-events-none touch-none">
             <CrystalScene className="h-full w-full" isDark={isDark} />
           </div>
         </div>
