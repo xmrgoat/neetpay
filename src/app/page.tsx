@@ -503,7 +503,7 @@ export default function HomePage() {
       {/* ── Hero Content — bottom left ── */}
       <div
         ref={heroRef}
-        className="relative z-10 flex min-h-screen flex-col justify-end px-6 pb-16 sm:px-12 md:px-20 lg:px-28"
+        className="relative z-10 flex min-h-screen flex-col justify-end px-6 pt-24 pb-16 sm:px-12 md:px-20 lg:px-28"
       >
         <div ref={textRef} className="max-w-xl">
           {/* Main tagline — large italic */}
