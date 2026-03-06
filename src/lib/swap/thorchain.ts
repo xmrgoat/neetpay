@@ -236,7 +236,7 @@ export function createThorchainProvider(): SwapProvider {
       if (!toAsset) throw new Error(`Cannot build memo: unsupported asset ${cached.toAsset}`);
       // Slippage protection: minimum output = 97% of quoted settle amount.
       // THORChain limit is in base units (1e8), so convert from human amount.
-      const minOutput = Math.floor(cached.settleAmount * 0.97 * 1e8);
+      const minOutput = Math.floor(parseFloat(cached.settleAmount) * 0.97 * 1e8);
       const limit = String(minOutput);
       const memo = `=:${toAsset}:${opts.settleAddress}:${limit}:${AFFILIATE}:${AFFILIATE_BPS}`;
 
