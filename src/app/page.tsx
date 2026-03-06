@@ -150,40 +150,44 @@ export default function HomePage() {
     <div className="relative min-h-screen overflow-hidden bg-black">
       {/* ── Background image ── */}
       <div ref={bgRef} className="absolute inset-0" style={{ opacity: 0 }}>
-        {/* Dark image (default / dark themes) */}
-        <Image
-          src="/image/sombre.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover object-left"
+        {/* Dark video (default / dark themes) */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover object-left"
           style={{ opacity: isDark ? 1 : 0, transition: "none" }}
-          sizes="100vw"
-        />
-        {/* Light image */}
-        <Image
-          src="/image/clair1.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover object-left"
+        >
+          <source src="/video/night1.mp4" type="video/mp4" />
+        </video>
+        {/* Light video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover object-left"
           style={{ opacity: isDark ? 0 : 1, transition: "none" }}
-          sizes="100vw"
-        />
+        >
+          <source src="/video/day.mp4" type="video/mp4" />
+        </video>
 
-        {/* Circular reveal layer — shows incoming image during transition */}
+        {/* Circular reveal layer — shows incoming video during transition */}
         {revealImg && (
           <div
             ref={revealRef}
             className="absolute inset-0 z-[1]"
           >
-            <Image
-              src={revealImg === "light" ? "/image/clair1.jpg" : "/image/sombre.jpg"}
-              alt=""
-              fill
-              className="object-cover object-left"
-              sizes="100vw"
-            />
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 h-full w-full object-cover object-left"
+            >
+              <source src={revealImg === "light" ? "/video/day.mp4" : "/video/night1.mp4"} type="video/mp4" />
+            </video>
           </div>
         )}
 
@@ -453,6 +457,7 @@ export default function HomePage() {
                   background: "linear-gradient(135deg, #FF6600 0%, #FF8533 60%, #FFaa66 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
+                  paddingRight: "0.15em",
                 }}
               >
                 a feature
@@ -466,6 +471,7 @@ export default function HomePage() {
                   background: "linear-gradient(135deg, #FF6600 0%, #FF8533 60%, #FFaa66 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
+                  paddingRight: "0.15em",
                 }}
               >
                 foundation
@@ -599,6 +605,7 @@ export default function HomePage() {
                   background: "linear-gradient(135deg, #FF6600 0%, #FF8533 60%, #FFaa66 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
+                  paddingRight: "0.15em",
                 }}
               >
                 a feature
@@ -612,6 +619,7 @@ export default function HomePage() {
                   background: "linear-gradient(135deg, #FF6600 0%, #FF8533 60%, #FFaa66 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
+                  paddingRight: "0.15em",
                 }}
               >
                 foundation
