@@ -26,7 +26,7 @@ export default function HomePage() {
   const isAnimating = useRef(false);
   const [revealImg, setRevealImg] = useState<"light" | "dark" | null>(null);
 
-  const isDark = !mounted || resolvedTheme !== "light";
+  const isDark = mounted && resolvedTheme === "dark";
 
   const clickOrigin = useRef({ cx: 0, cy: 0, maxR: 0 });
   // Track which theme we're waiting to land on
