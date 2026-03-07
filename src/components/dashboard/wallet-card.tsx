@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   ArrowUpRight,
   ArrowDownLeft,
-  ArrowLeftRight,
   Pencil,
   RotateCcw,
   Check,
@@ -69,7 +68,6 @@ interface WalletCardProps {
   walletAddress?: string;
   onSendClick?: () => void;
   onReceiveClick?: () => void;
-  onSwapClick?: () => void;
 }
 
 // ─── Card Themes ────────────────────────────────────────────────────────────
@@ -218,7 +216,7 @@ function QrCodeModal({ address, onClose }: { address: string; onClose: () => voi
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, onSendClick, onReceiveClick, onSwapClick }: WalletCardProps) {
+export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, onSendClick, onReceiveClick }: WalletCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardInnerRef = useRef<HTMLDivElement>(null);
   const [themeId, setThemeId] = useState("orange");
@@ -418,10 +416,6 @@ export function WalletCard({ totalUsd, change24h = 0, holdings, walletAddress, o
               <button onClick={onReceiveClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2.5 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
                 <ArrowDownLeft className="h-3 w-3" />
                 Receive
-              </button>
-              <button onClick={onSwapClick} className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2.5 text-[12px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-lg active:translate-y-0 active:scale-100" style={{ background: theme.btnBg, border: `1px solid ${theme.btnBorder}`, backdropFilter: "blur(8px)" }}>
-                <ArrowLeftRight className="h-3 w-3" />
-                Swap
               </button>
             </div>
           </div>

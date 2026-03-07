@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import crypto from "node:crypto";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": process.env.NEXT_PUBLIC_SITE_URL || "*",
@@ -12,14 +11,38 @@ const CORS_HEADERS = {
 };
 
 export function middleware(req: NextRequest) {
-  const requestId = req.headers.get("x-request-id") || crypto.randomUUID();
+  const requestId = req.headers.get("x-request-id") || globalThis.crypto.randomUUID();
+  const { pathname } = req.nextUrl;
 
   // Handle CORS preflight for API routes
-  if (req.method === "OPTIONS" && req.nextUrl.pathname.startsWith("/api/v1")) {
+  if (req.method === "OPTIONS" && pathname.startsWith("/api/v1")) {
     return new NextResponse(null, {
       status: 204,
       headers: { ...CORS_HEADERS, "X-Request-ID": requestId },
     });
+  }
+
+  // Protect /dashboard/* — require JWT token in localStorage.
+  // Since middleware runs on the edge (no localStorage access), we check
+  // for the token in a cookie named "neetpay_token" as a fallback.
+  // The primary auth check happens client-side; this is a navigation guard.
+  if (pathname.startsWith("/dashboard")) {
+    const token = req.cookies.get("neetpay_token")?.value;
+
+    if (!token) {
+      // No cookie — check if client-side JS will handle it.
+      // We allow the page to load and let the client-side redirect happen
+      // via the dashboard layout. This avoids issues with localStorage-based auth.
+      // The dashboard layout itself will check isAuthenticated() and redirect.
+    }
+  }
+
+  // Redirect authenticated users away from login page.
+  if (pathname === "/login") {
+    const token = req.cookies.get("neetpay_token")?.value;
+    if (token) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
   }
 
   const res = NextResponse.next();
@@ -28,7 +51,7 @@ export function middleware(req: NextRequest) {
   res.headers.set("X-Request-ID", requestId);
 
   // Add CORS headers to /api/v1/* responses
-  if (req.nextUrl.pathname.startsWith("/api/v1")) {
+  if (pathname.startsWith("/api/v1")) {
     for (const [key, value] of Object.entries(CORS_HEADERS)) {
       res.headers.set(key, value);
     }
@@ -38,5 +61,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/v1/:path*"],
+  matcher: ["/api/v1/:path*", "/dashboard/:path*", "/login"],
 };

@@ -7,293 +7,116 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id             String         @id @default(cuid())
-  name           String?
-  email          String         @unique
+model Merchant {
+  id             String   @id @default(cuid())
+  email          String   @unique
   hashedPassword String
-  plan           String         @default("free")
   webhookUrl     String?
   webhookSecret  String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  xmrWalletAddress String?
+  feePercent     Float    @default(0.4)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  // Settlement / forwarding config
-  xmrSettlementAddress String?
-  autoForwardEnabled   Boolean  @default(true)
-  platformFeePercent   Float    @default(0.4)
-  minForwardAmount     Float    @default(0.001)
-
-  payments           Payment[]
-  subscriptions      Subscription[]
-  apiKeys            ApiKey[]
-  webhookLogs        WebhookLog[]
-  walletAddresses    WalletAddress[]
-  walletBalances     WalletBalance[]
-  walletTransactions WalletTransaction[]
-  analyticsEvents    AnalyticsEvent[]
-  feeLogs            FeeLog[]
-  branding           MerchantBranding?
+  invoices    Invoice[]
+  apiKeys     ApiKey[]
+  webhookLogs WebhookLog[]
+  branding    MerchantBranding?
 }
 
-model Payment {
-  id              String    @id @default(cuid())
-  userId          String
-  trackId         String    @unique
-  amount          Float
-  currency        String
-  status          String    @default("pending")
-  description     String?
+model Invoice {
+  id           String    @id @default(cuid())
+  merchantId   String
+  amountXmr    Float
+  amountFiat   Float?
+  fiatCurrency String?
+  subaddress   String
+  status       String    @default("pending") // pending | swap_pending | confirming | paid | expired | failed
 
-  // Chain/crypto details
-  chain           String?
-  payCurrency     String?
-  payAmount       Float?
-  expectedPayAmount Float?   // Expected crypto amount (fiat ÷ price at creation time)
-  payAddress      String?
-  network         String?
-  tokenContract   String?
+  // Swap details (Wagyu or Trocador)
+  swapProvider    String?  // "wagyu" | "trocador"
+  swapOrderId     String?
+  depositAddress  String?
+  depositChain    String?
+  depositToken    String?
+  depositAmount   Float?
 
-  // Transaction details
-  txId            String?
-  senderAddress   String?
-  confirmations   Int       @default(0)
-  requiredConfs   Int       @default(1)
+  // Transaction
+  txHash        String?
+  confirmations Int      @default(0)
 
-  // Wallet derivation
-  derivationIndex Int?
+  // Fee
+  feePercent    Float?
+  feeAmount     Float?
+  netAmount     Float?
 
   // Merchant integration
-  callbackUrl     String?
-  returnUrl       String?
-  metadata        Json?
+  callbackUrl   String?
+  returnUrl     String?
+  metadata      Json?
 
-  // Geo / analytics
-  country         String?
-  ipAddress       String?
+  description   String?
+  expiresAt     DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  // Fee collection (snapshot at payment creation time)
-  platformFeePercent    Float?
-  platformFeeAmount     Float?
-  netAmount             Float?
+  merchant    Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  webhookLogs WebhookLog[]
 
-  // Auto-forwarding to merchant cold wallet
-  merchantWalletAddress String?
-  forwardingStatus      String   @default("none") // none|pending|processing|completed|failed|skipped
-  forwardingTxId        String?
-  forwardedAt           DateTime?
-  forwardingRetryCount  Int      @default(0)
-  forwardingLastError   String?
-  forwardingNextRetry   DateTime?
-
-  // Idempotency
-  idempotencyKey  String?   @unique
-
-  expiresAt       DateTime?
-  paidAt          DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feeLog  FeeLog?
-
-  @@index([userId])
+  @@index([merchantId])
   @@index([status])
-  @@index([payAddress])
-  @@index([chain, status])
-  @@index([forwardingStatus])
-  @@index([userId, forwardingStatus])
-  @@index([forwardingStatus, forwardingNextRetry])
+  @@index([subaddress])
+  @@index([swapOrderId])
   @@index([status, expiresAt])
-}
-
-model WalletAddress {
-  id              String   @id @default(cuid())
-  userId          String?
-  chain           String
-  address         String
-  derivationIndex Int
-  paymentId       String?  @unique
-  createdAt       DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([chain, address])
-  @@index([userId, chain])
-  @@index([chain, paymentId])
-}
-
-model Subscription {
-  id        String    @id @default(cuid())
-  userId    String
-  plan      String
-  status    String    @default("active")
-  startDate DateTime  @default(now())
-  endDate   DateTime?
-  paymentId String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
 model ApiKey {
   id        String    @id @default(cuid())
-  userId    String
+  merchantId String
   name      String    @default("Default")
-  type      String    @default("secret")   // "secret" | "publishable"
-  keyHash   String    @unique              // SHA-256 hex for lookup
-  keyPrefix String                         // "sk_live_····last4" for display
-  scopes    String[]  @default(["payments:read", "payments:write"])
+  keyHash   String    @unique
+  keyPrefix String
   expiresAt DateTime?
   lastUsed  DateTime?
   createdAt DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([merchantId])
 }
 
 model WebhookLog {
-  id          String    @id @default(cuid())
-  userId      String
-  paymentId   String?
-  url         String
-  payload     String
-  status      Int
-  success     Boolean
-  duration    Int
-  retryCount  Int       @default(0)
+  id         String    @id @default(cuid())
+  merchantId String
+  invoiceId  String?
+  url        String
+  payload    String
+  statusCode Int
+  success    Boolean
+  attempts   Int       @default(0)
   nextRetryAt DateTime?
-  expiresAt   DateTime  @default(dbgenerated("NOW() + interval '30 days'"))
-  createdAt   DateTime  @default(now())
+  createdAt  DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
-  @@index([userId])
+  @@index([merchantId])
+  @@index([invoiceId])
   @@index([success, nextRetryAt])
-  @@index([paymentId])
-  @@index([expiresAt])
-}
-
-model WalletBalance {
-  id        String   @id @default(cuid())
-  userId    String
-  currency  String
-  chain     String
-  amount    Float    @default(0)
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, currency, chain])
-  @@index([userId])
-}
-
-model WalletTransaction {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String   // "deposit" | "withdrawal" | "payment_received"
-  currency    String
-  chain       String
-  amount      Float
-  fee         Float?
-  txHash      String?
-  toAddress   String?
-  fromAddress String?
-  status      String   @default("pending")
-  paymentId   String?
-  createdAt   DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, type])
-  @@index([paymentId])
-}
-
-model PriceCache {
-  id        String   @id @default(cuid())
-  symbol    String   @unique
-  usdPrice  Float
-  change24h Float?
-  updatedAt DateTime @updatedAt
-}
-
-model AnalyticsEvent {
-  id        String   @id @default(cuid())
-  userId    String
-  type      String   // "payment_view" | "payment_created" | "payment_paid" | "link_click"
-  paymentId String?
-  country   String?
-  city      String?
-  ip        String?
-  userAgent String?
-  referrer  String?
-  metadata  String?
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, type])
-  @@index([createdAt])
-}
-
-model FeeLog {
-  id             String   @id @default(cuid())
-  userId         String
-  paymentId      String   @unique
-  currency       String
-  chain          String
-  receivedAmount Float
-  feeAmount      Float
-  feePercent     Float
-  netAmount      Float
-  txId           String?
-  createdAt      DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([currency, createdAt])
-}
-
-model PlatformBalance {
-  id        String   @id @default(cuid())
-  currency  String
-  chain     String
-  amount    Float    @default(0)
-  updatedAt DateTime @updatedAt
-
-  @@unique([currency, chain])
 }
 
 model MerchantBranding {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  logoUrl       String?
-  brandName     String?
-  primaryColor  String?
-  accentColor   String?
-  customDomain  String?  @unique
-  hideNeetpay   Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  merchantId   String   @unique
+  logoUrl      String?
+  brandName    String?
+  primaryColor String?
+  accentColor  String?
+  customDomain String?  @unique
+  hideNeetpay  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model IdempotencyRecord {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  userId    String
-  response  Json
-  expiresAt DateTime @default(dbgenerated("NOW() + interval '24 hours'"))
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([expiresAt])
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 }

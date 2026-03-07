@@ -35,7 +35,7 @@ export function PricingCard({
       ? "Start for free"
       : "Start Pro — cancel anytime";
 
-  const ctaHref = isEnterprise ? "mailto:hello@neetpay.com" : "/register";
+  const ctaHref = isEnterprise ? "mailto:hello@neetpay.com" : "/login";
 
   // Pro card with glass treatment
   if (recommended) {

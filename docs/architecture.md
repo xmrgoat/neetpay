@@ -1,546 +1,454 @@
-# neetpay — Architecture Backend
+# neetpay — Architecture
 
 > "Pay without permission."
 
 ## Vue d'ensemble
 
-neetpay est un payment gateway crypto self-hosted. Le marchand integre l'API, le client paie en crypto, neetpay detecte le paiement on-chain et notifie le marchand via webhook.
+neetpay est un **crypto payment gateway XMR-only**. Le marchand accepte des paiements en XMR sans savoir ce que le payeur possede. Le payeur envoie n'importe quelle crypto (BTC, ETH, USDC, SOL...), neetpay gere la conversion en XMR via des providers de swap externes. Le marchand recoit toujours du XMR.
+
+**Trois produits :**
+- **API B2B** — les devs integrent neetpay sur leur site
+- **Payment Links B2C** — liens de paiement sans code
+- **White-label / Widget JS** — checkout embeddable
 
 ```
-Marchand                     neetpay                         Blockchain
-   │                            │                                │
-   │  POST /api/v1/payment/create                                │
-   │ ──────────────────────────>│                                │
-   │                            │  derive HD address (BIP-44)    │
-   │  { trackId, payAddress }   │                                │
-   │ <──────────────────────────│                                │
-   │                            │                                │
-   │        (client envoie crypto a payAddress)                  │
-   │                            │                                │
-   │                            │  detect tx (webhook ou poll)   │
-   │                            │ <──────────────────────────────│
-   │                            │                                │
-   │                            │  confirmations >= required ?   │
-   │                            │  oui → status = "paid"         │
-   │                            │                                │
-   │  POST webhook (HMAC-SHA256)│                                │
-   │ <──────────────────────────│                                │
+pay.neetpay.com          app.neetpay.com          neetpay.com
+(page paiement)          (dashboard)              (landing)
+      │                       │                       │
+      └──────────┬────────────┘                       │
+                 │                                    │
+          api.neetpay.com/v1/                         │
+          ┌──────────────────┐                        │
+          │   Axum API       │◄───────────────────────┘
+          │   (Rust)         │
+          └────────┬─────────┘
+                   │
+      ┌────────────┼─────────────┐
+      ▼            ▼             ▼
+   PostgreSQL    Redis      monero-wallet-rpc
+                              + monerod
+                   │
+      ┌────────────┼────────────┐
+      ▼                         ▼
+ Wagyu API                Trocador API
+ (swap primaire)          (swap fallback)
 ```
 
 ---
 
-## 1. Chain Providers
+## 1. Swap Providers
 
-Chaque blockchain a un provider qui implemente `ChainProvider` (`src/lib/chains/types.ts`).
+### Wagyu (primaire)
 
-### Interface
+Trade XMR sur l'orderbook Hyperliquid (XMR1/USDC) et bridge vers la blockchain Monero. Meilleure liquidite disponible pour XMR.
 
-```typescript
-interface ChainProvider {
-  chain: string
-  generateAddress(derivationIndex: number): Promise<GeneratedAddress>
-  checkPayment(address: string, expectedAmount?: number, tokenContract?: string): Promise<PaymentCheck | null>
-  getConfirmations(txHash: string): Promise<number>
-  getRequiredConfirmations(): number
-  validateAddress(address: string): boolean
-  getExplorerUrl(txHash: string): string
-  getBalance?(address: string, tokenContract?: string): Promise<number>
-  send?(params: { fromIndex, toAddress, amount, tokenContract? }): Promise<{ txHash, fee }>
-  estimateFee?(toAddress: string, amount: number, tokenContract?: string): Promise<number>
-}
+**Chains supportees en entree :**
+- Arbitrum (USDC, USDT, ETH, WBTC) — chainId: 42161
+- Solana (SOL, USDC) — chainId: 1151111081099710
+- Bitcoin (BTC)
+- Monero (XMR)
+
+**API Flow :**
+```
+POST /v1/quote    → taux estime (fromAmount, toAmount, estimatedTime)
+POST /v1/order    → cree l'ordre (depositAddress, depositAmount, orderId)
+GET  /v1/order/:id → poll le statut (pas de webhooks)
 ```
 
-### Providers
+**Fee model :**
+- X-API-KEY header pour collecter les fees integrator
+- fee_percent configurable (0-5%), garde 100%
+- Fees collectees automatiquement sur le depot
 
-| Provider | Fichier | Chains | RPC | Detection | Confirmations |
-|----------|---------|--------|-----|-----------|---------------|
-| EVM | `evm-provider.ts` | ETH, Polygon, BSC, Arbitrum, Base, Optimism, Avalanche | Alchemy RPC | Alchemy webhooks | 12-30 blocs |
-| Bitcoin | `bitcoin-provider.ts` | BTC | **bitcoind natif** (VPS) | Polling (scantxoutset) | 3 blocs |
-| Solana | `solana-provider.ts` | SOL | **Helius** RPC | Helius webhooks | 32 blocs |
-| TRON | `tron-provider.ts` | TRX | Alchemy TRON RPC | Polling | 20 blocs |
-| Monero | `monero-provider.ts` | XMR | **monerod natif** (VPS) | Polling (get_transfers) | 10 blocs |
-| Litecoin | `litecoin-provider.ts` | LTC | **litecoind natif** (VPS) | Polling (scantxoutset) | 6 blocs |
-| Dogecoin | `dogecoin-provider.ts` | DOGE | **dogecoind natif** (VPS) | Polling (scantxoutset + fallback listunspent) | 6 blocs |
-
-### Infrastructure
-
+**Statuts :**
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     INFRASTRUCTURE                            │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Nodes natifs sur VPS (0 frais API) :                        │
-│    ├── bitcoind ─────────────────────────── BTC Provider     │
-│    ├── monerod ──────── monero-wallet-rpc ── XMR Provider    │
-│    ├── litecoind ────────────────────────── LTC Provider     │
-│    └── dogecoind ────────────────────────── DOGE Provider    │
-│                                                              │
-│  API externe :                                               │
-│    ├── Alchemy ──── EVM (ETH, Polygon, BSC, Arbitrum, etc.) │
-│    ├── Alchemy ──── TRON                                     │
-│    └── Helius ───── SOL (RPC + webhooks)                     │
-│                                                              │
-│  Swap :                                                      │
-│    └── THORChain ── cross-chain swaps (decentralise)         │
-│                                                              │
-│  Futur :                                                     │
-│    ├── ETH node (Reth/geth) quand le volume le justifie     │
-│    ├── BSC / Polygon nodes natifs                            │
-│    └── TRON node natif (java-tron)                           │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+awaiting_deposit → deposit_detected → deposit_confirmed
+→ executing_swap → completed
+→ refunding / refunded / failed / expired (2h)
 ```
 
-**Nodes natifs — sur le VPS :**
-- **bitcoind** — BTC. JSON-RPC (scantxoutset, getrawtransaction, sendrawtransaction). ~600 GB blockchain (ou pruned ~7 GB), 4 GB RAM.
-- **monerod + monero-wallet-rpc** — XMR. Privacy-critical, pas d'API publique fiable. ~230 GB blockchain, 4 GB RAM.
-- **litecoind** — LTC. JSON-RPC, scantxoutset. ~150 GB blockchain, 2 GB RAM.
-- **dogecoind** — DOGE. JSON-RPC, scantxoutset + fallback listunspent. ~80 GB blockchain, 2 GB RAM.
+**Contraintes :**
+- Min $20 (Arbitrum/Solana), $25 (Monero)
+- Pas de `amount_to` (toujours specifier `fromAmount`)
+- TWAP automatique pour ordres > $5,000 (XMR sell) ou > $25,000 (XMR buy)
+- Polling requis (pas de webhooks)
 
-**Pourquoi des nodes natifs pour BTC/XMR/LTC/DOGE ?**
-- 0 frais API (avant on payait BlockCypher pour LTC/DOGE, Alchemy pour BTC)
-- Pas de rate limiting
-- Controle total, pas de dependance tiers
-- XMR : privacy-critical, obligation de self-host
-- BTC/LTC/DOGE : UTXO chains, meme interface JSON-RPC (scantxoutset)
+### Trocador (fallback)
 
-**API externe :**
-- **Alchemy** — EVM (toutes les chains) + TRON. Webhooks pour detection instantanee sur EVM.
-- **Helius** — SOL. Meilleur provider Solana (RPC, webhooks, DAS API). Free tier = 50 req/s.
+Agregateur de swaps privacy-focused. Supporte plus de chains que Wagyu.
 
-**Pourquoi pas de node ETH/SOL ?**
-- **ETH (geth/Reth)** : 32-64 GB RAM + 4 TB NVMe = ~$150/mois en VPS dedie. Alchemy suffit pour le volume actuel.
-- **SOL (solana-validator)** : 512 GB - 1 TB RAM = ingerable. Helius free tier largement suffisant.
-- Migration vers des nodes natifs quand le volume justifie le cout.
+**Avantages vs Wagyu :**
+- Mode `payment=True` + `amount_to` → montant fixe XMR (parfait pour invoices)
+- Webhooks natifs
+- Plus de chains (TRC20, BEP20, etc.)
+- `new_bridge` : double swap avec XMR intermediaire
 
----
-
-## 2. HD Wallet
-
-Toutes les adresses sont derivees d'un seul master seed.
-
+**API Flow :**
 ```
-Master Seed (BIP-39 mnemonic, 12/24 mots)
-    │
-    │  chiffre avec AES-256-GCM (scrypt pour la cle)
-    │  stocke dans ENCRYPTED_SEED env var
-    │
-    ├── m/44'/60'/0'/0/{i}   → ETH/EVM (viem account)
-    ├── m/84'/0'/0'/0/{i}    → BTC (P2WPKH native segwit)
-    ├── m/44'/501'/{i}'/0'   → SOL (Ed25519 keypair)
-    ├── m/44'/195'/0'/0/{i}  → TRON (secp256k1 → base58check)
-    ├── m/84'/2'/0'/0/{i}    → LTC (P2WPKH bech32 "ltc1...")
-    ├── m/44'/3'/0'/0/{i}    → DOGE (P2PKH legacy "D...")
-    └── XMR                   → Subaddress via monero-wallet-rpc
+GET /new_rate     → quotes de tous les providers (avec ID)
+GET /new_trade    → cree la transaction (avec provider choisi)
+GET /trade        → statut (ou webhook POST automatique)
 ```
 
-**Fichiers :**
-- `src/lib/wallet/hd-wallet.ts` — derivation, cache mnemonic en memoire
-- `src/lib/wallet/kms.ts` — AES-256-GCM encrypt/decrypt (scrypt KDF)
-- `src/lib/wallet/wallet-service.ts` — balances, withdrawals, deposit addresses
+**Fee model :**
+- `markup=0` → Trocador partage 50% de sa commission
+- `markup=1/1.65/3%` → 100% du markup pour nous
 
-**Securite :**
-- Le mnemonic n'est jamais ecrit en clair sur disque
-- `SEED_ENCRYPTION_KEY` = passphrase pour scrypt
-- `ENCRYPTED_SEED` = `base64(salt|iv|tag|ciphertext)`
-- En production : jamais de `DEV_MNEMONIC`
-
----
-
-## 3. Payment Engine
-
-### Flow complet
-
+**Statuts :**
 ```
-createPayment()
-    │
-    ├── lookup CHAIN_REGISTRY[payCurrencyKey]
-    ├── get next derivationIndex (global, incrementing)
-    ├── provider.generateAddress(index)
-    ├── create WalletAddress record
-    ├── create Payment record (status: "pending", expiresAt: +30min)
-    │
-    ▼
-[En attente du paiement]
-    │
-    ├── EVM : Alchemy webhook → checkPaymentStatus()
-    ├── SOL : Helius webhook → checkPaymentStatus()
-    └── BTC/TRON/XMR/LTC/DOGE : cron poll → pollActivePayments()
-         │
-         ▼
-    checkPaymentStatus(paymentId)
-         │
-         ├── payment expire ? → status = "expired", release address
-         │
-         ├── provider.checkPayment(address)
-         │     │
-         │     └── tx trouvee ?
-         │           │
-         │           ├── confirmations < required → status = "confirming"
-         │           │
-         │           └── confirmations >= required → status = "paid"
-         │                 ├── creditBalance(userId, currency, chain, amount)
-         │                 ├── create WalletTransaction (type: "payment_received")
-         │                 ├── trackEvent("payment_paid")
-         │                 └── dispatchWebhook() → POST marchand
-         │
-         └── rien trouve → on repoll au prochain cycle
+new → waiting → confirming → sending → finished
+→ failed / expired / halted / refunded
 ```
-
-### Statuts
-
-```
-pending ──→ confirming ──→ paid
-   │                         │
-   └──→ expired              └──→ [webhook dispatch]
-```
-
-### Polling
-
-Le cron `/api/cron/check-payments` tourne toutes les 30-60 secondes et poll :
-- `bitcoin` (scantxoutset via bitcoind natif sur le VPS)
-- `tron` (getaccount via Alchemy)
-- `monero` (get_transfers via monero-wallet-rpc natif sur le VPS)
-- `litecoin` (scantxoutset via litecoind natif sur le VPS)
-- `dogecoin` (scantxoutset via dogecoind natif sur le VPS)
-
-EVM → webhooks Alchemy (push, pas de polling).
-SOL → webhooks Helius (push, pas de polling).
-
-**Fichiers :**
-- `src/lib/payment/engine.ts` — createPayment, checkPaymentStatus, pollActivePayments, expirePayments, dispatchWebhook
-- `src/lib/payment/poller.ts` — orchestration du cycle cron
-
----
-
-## 4. Registry
-
-`src/lib/chains/registry.ts` mappe 24 currency keys vers leurs providers.
-
-```
-CHAIN_REGISTRY = {
-  "ETH":        { chain: "ethereum",  provider: EvmProvider("ethereum"),  native: true  }
-  "BTC":        { chain: "bitcoin",   provider: BitcoinProvider(),        native: true  }
-  "SOL":        { chain: "solana",    provider: SolanaProvider(),         native: true  }
-  "XMR":        { chain: "monero",    provider: MoneroProvider(),         native: true  }
-  "TRX":        { chain: "tron",      provider: TronProvider(),           native: true  }
-  "LTC":        { chain: "litecoin",  provider: LitecoinProvider(),       native: true  }
-  "DOGE":       { chain: "dogecoin",  provider: DogecoinProvider(),       native: true  }
-  "BNB":        { chain: "bsc",       provider: EvmProvider("bsc"),       native: true  }
-  "MATIC":      { chain: "polygon",   provider: EvmProvider("polygon"),   native: true  }
-  "ARB":        { chain: "arbitrum",  provider: EvmProvider("arbitrum"),  native: true  }
-  "OP":         { chain: "optimism",  provider: EvmProvider("optimism"),  native: true  }
-  "AVAX":       { chain: "avalanche", provider: EvmProvider("avalanche"), native: true  }
-  "USDT-ERC20": { chain: "ethereum",  provider: EvmProvider("ethereum"),  native: false, tokenContract: "0xdAC17..." }
-  "USDT-TRC20": { chain: "tron",      provider: TronProvider(),           native: false, tokenContract: "TR7NHq..." }
-  "USDT-POLYGON": ...
-  "USDT-BSC":   ...
-  "USDT-SOL":   ...
-  "USDC-ERC20": ...
-  "USDC-POLYGON": ...
-  "USDC-BSC":   ...
-  "USDC-SOL":   ...
-  "DAI-ERC20":  ...
-}
-```
-
-Les providers sont lazy-init (crees au premier acces via `get provider()`).
-
----
-
-## 5. Swap System
-
-### Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                      SWAP ROUTER                         │
-│                   src/lib/swap/router.ts                  │
-│                                                          │
-│   resolveProvider(from, to) :                            │
-│                                                          │
-│   1. Meme chain EVM ?  ──→  1inch Fusion (si API key)   │
-│   2. Cross-chain ?     ──→  THORChain  ← PRIMARY        │
-│   3. Fallback          ──→  SideShift                    │
-│                                                          │
-└──────────────────────────┬───────────────────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  THORChain  │
-                    │ thorchain.ts│
-                    └─────────────┘
-```
-
-**THORChain est le swap provider principal.** 1inch et SideShift sont dans le code comme fallbacks mais THORChain gere la quasi-totalite des swaps.
-
-### Interface unifiee
-
-Tous les swap providers implementent `SwapProvider` (`src/lib/swap/types.ts`) :
-
-```typescript
-interface SwapProvider {
-  name: "thorchain" | "oneinch" | "sideshift"
-  getSupportedAssets(): string[]
-  supportsRoute(fromKey: string, toKey: string): boolean
-  getQuote(opts: { fromKey, toKey, amount }): Promise<SwapQuote>
-  executeSwap(opts: { quoteId, settleAddress, refundAddress? }): Promise<SwapExecution>
-  getStatus(swapId: string): Promise<SwapStatusResponse>
-}
-```
-
-### THORChain (`thorchain.ts`)
-
-Swaps cross-chain decentralises via le protocole THORChain. Pas de KYC, pas de custodian.
-
-**Comment ca marche :**
-1. On demande un quote a THORNode (`/thorchain/quote/swap`)
-2. Le quote retourne une adresse de vault + un memo
-3. L'utilisateur envoie ses crypto a l'adresse du vault avec le memo
-4. THORChain execute le swap on-chain automatiquement
-5. Les crypto swappees arrivent a l'adresse de destination
-
-**Memo format :**
-```
-=:{DEST_ASSET}:{DEST_ADDR}:{SLIP_LIMIT}:{AFFILIATE}:{FEE_BPS}
-```
-Exemple : `=:ETH.ETH:0x1234...abcd:0:np:30` (30 bps affiliate fee)
-
-**Assets supportes :**
-```
-BTC.BTC, ETH.ETH, LTC.LTC, DOGE.DOGE, AVAX.AVAX, BSC.BNB
-+ ERC-20 : ETH.USDT-0x..., ETH.USDC-0x..., ETH.DAI-0x...
-+ BSC tokens : BSC.USDT-0x..., BSC.USDC-0x...
-```
-
-**Amounts :** Tous en 8-decimal base units (1e8). 1 BTC = 100,000,000 units.
-
-**Affiliate fees :** Configurable via `THORCHAIN_AFFILIATE_ID` et `THORCHAIN_AFFILIATE_FEE_BPS` (defaut: 30 bps = 0.3%).
-
-### Fallbacks (code-ready)
-
-**1inch Fusion** (`oneinch.ts`) — DEX aggregation pour swaps meme-chain EVM. Active seulement si `ONEINCH_API_KEY` est set. Meilleurs taux pour ETH→USDT, BNB→USDC, etc.
-
-**SideShift** (`sideshift-adapter.ts`) — Fallback centralise pour les pairs pas supportes par THORChain. A terme on veut le virer completement.
 
 ### Routing
 
-```
-getQuote(from, to)
-    │
-    ├── meme chain EVM + ONEINCH_API_KEY set ? → 1inch
-    ├── THORChain supporte la paire ?           → THORChain ← 99% des cas
-    ├── SideShift supporte la paire ?           → SideShift (fallback)
-    └── aucun                                   → erreur
-```
-
----
-
-## 6. API Routes
-
-### Paiements
-
-| Methode | Route | Description |
-|---------|-------|-------------|
-| POST | `/api/v1/payment/create` | Creer un paiement (genere une adresse unique) |
-| GET | `/api/v1/payment/[trackId]` | Statut d'un paiement |
-| GET | `/api/v1/currencies` | Liste des currencies supportees |
-
-### Swaps (dashboard)
-
-| Methode | Route | Description |
-|---------|-------|-------------|
-| POST | `/api/dashboard/swap/quote` | Obtenir un quote (router choisit le provider) |
-| POST | `/api/dashboard/swap/execute` | Executer un swap (passe `provider` du quote) |
-| GET | `/api/dashboard/swap/status?swapId=X&provider=Y` | Statut d'un swap |
-
-### Cron
-
-| Methode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/cron/check-payments` | Poll BTC/TRON/XMR/LTC/DOGE |
-| GET | `/api/cron/update-prices` | MAJ prix via Alchemy Prices API |
-| GET | `/api/cron/expire-payments` | Expire les paiements passes |
-
-### Webhooks entrants
-
-| Methode | Route | Description |
-|---------|-------|-------------|
-| POST | `/api/webhooks/alchemy` | Alchemy Address Activity (EVM/SOL) |
-
----
-
-## 7. Database (Prisma 7)
-
-```
-User
-  ├── Payment[]           (1 payment = 1 adresse unique = 1 tx)
-  ├── WalletAddress[]     (adresses derivees)
-  ├── WalletBalance[]     (soldes par currency/chain)
-  ├── WalletTransaction[] (historique: deposit, withdrawal, payment_received)
-  ├── ApiKey[]            (auth API publique)
-  ├── WebhookLog[]        (logs de delivery webhook)
-  └── Subscription        (plan/tier)
-
-PriceCache                (prix USD + change 24h, MAJ par cron)
-AnalyticsEvent            (events: payment_view, payment_paid, etc.)
+```rust
+fn select_provider(from_chain: &str, from_token: &str) -> Provider {
+    match from_chain {
+        "arbitrum" => Provider::Wagyu,   // USDC, USDT, ETH, WBTC
+        "solana"   => Provider::Wagyu,   // SOL, USDC
+        "bitcoin"  => Provider::Wagyu,   // BTC
+        _          => Provider::Trocador // TRC20, BEP20, autres
+    }
+}
 ```
 
 ---
 
-## 8. Fees et modele economique
+## 2. Node XMR
 
+Deux processus sur le VPS :
+- `monerod` → synchronise la blockchain Monero complete
+- `monero-wallet-rpc` → interface RPC pour wallets/adresses
+
+**Ce que le node fait :**
+
+1. **Generer les subaddresses** — chaque invoice = une subaddresse unique
 ```
-Transaction flow :
+monero-wallet-rpc → create_address(account_index, label)
+→ retourne une subaddresse unique
+```
 
-  Client paie 1 BTC au marchand
-       │
-       ├── neetpay prend 0.4%  →  0.004 BTC  (notre revenue)
-       ├── network fee          →  variable    (paye par le client)
-       └── marchand recoit      →  0.996 BTC
+2. **Confirmer les transactions entrantes** — detecte l'arrivee du XMR
+```
+monero-wallet-rpc → get_transfers(in, pending)
+→ detecte les tx sur les subaddresses actives
+→ confirme apres 10 blocs
+```
 
-  Client swap BTC → USDT (via THORChain)
-       │
-       ├── neetpay fee 0.4%    →  sur le montant
-       ├── THORChain fee       →  ~0.1-0.3% (transparent, on-chain)
-       ├── network fee          →  variable
-       └── client recoit       →  USDT net
+3. **Valider les adresses marchands** — avant creation de compte
+```
+monero-wallet-rpc → validate_address(address)
+```
 
-  Nos couts fixes :
-       ├── VPS (BTC+XMR+LTC+DOGE)  →  ~$40-60/mois (4 cores, 16 GB, 2 TB SSD)
-       ├── Alchemy (EVM+TRON)       →  gratuit/growth plan
-       ├── Helius (SOL)             →  gratuit (free tier 50 req/s)
-       └── Total                    →  ~$50/mois
+**Ce que le node ne fait PAS :**
+- Pas de swap (c'est Wagyu/Trocador)
+- Pas de custody (XMR va au wallet du marchand via subaddress ou forward)
+- Juste lecteur/observateur de la blockchain
 
-  Break-even : ~12.5K$ volume mensuel (0.4% * 12.5K = 50$)
+---
+
+## 3. Schema DB (PostgreSQL)
+
+```sql
+merchants (
+  id UUID PRIMARY KEY,
+  email TEXT UNIQUE,
+  api_key TEXT UNIQUE,
+  xmr_wallet_address TEXT,
+  fee_percent DECIMAL DEFAULT 0.4,
+  webhook_url TEXT,
+  created_at TIMESTAMP
+)
+
+invoices (
+  id UUID PRIMARY KEY,
+  merchant_id UUID REFERENCES merchants,
+  amount_xmr DECIMAL,
+  amount_display DECIMAL,
+  currency_display TEXT,
+  subaddress TEXT,
+  status TEXT,           -- pending, swap_pending, confirming, paid, expired, failed
+  swap_provider TEXT,    -- wagyu | trocador
+  swap_order_id TEXT,
+  deposit_address TEXT,
+  deposit_chain TEXT,
+  deposit_token TEXT,
+  deposit_amount TEXT,
+  expires_at TIMESTAMP,
+  paid_at TIMESTAMP,
+  tx_hash TEXT,
+  created_at TIMESTAMP
+)
+
+webhook_logs (
+  id UUID PRIMARY KEY,
+  invoice_id UUID REFERENCES invoices,
+  url TEXT,
+  payload JSONB,
+  status_code INT,
+  attempts INT,
+  created_at TIMESTAMP
+)
 ```
 
 ---
 
-## 9. Variables d'environnement
+## 4. Flow Complet d'un Paiement
+
+```
+1. Marchand appelle POST /v1/invoice
+   { amount_xmr, currency_display, from_chain, from_token, webhook }
+
+2. neetpay genere une subaddresse XMR via monero-wallet-rpc
+
+3. neetpay appelle Wagyu POST /v1/order (ou Trocador GET /new_trade)
+   → recoit depositAddress
+
+4. neetpay stocke l'invoice en DB avec statut "pending"
+
+5. neetpay retourne au marchand :
+   { invoice_id, payment_url, deposit_address, deposit_amount, deposit_chain, expires_at }
+
+6. Le payeur envoie la crypto a deposit_address
+
+7. neetpay poll le swap provider toutes les 15s (Wagyu)
+   ou recoit un webhook (Trocador)
+   → statut swap evolue
+
+8. En parallele, le node XMR detecte l'arrivee sur la subaddresse
+   → confirme apres 10 blocs
+
+9. neetpay update invoice statut → "paid"
+   → envoie webhook POST au marchand
+   → preleve la fee neetpay (0.4%)
+
+10. Marchand recoit webhook avec tx_hash et montant confirme
+```
+
+---
+
+## 5. Stack Technique
+
+```
+Backend         → Rust + Axum
+Database        → PostgreSQL (sqlx)
+Cache           → Redis
+Node XMR        → monerod + monero-wallet-rpc (VPS)
+Swap primaire   → Wagyu API
+Swap fallback   → Trocador API
+Frontend        → Next.js 16 (React 19, Tailwind CSS 4)
+Dashboard       → app.neetpay.com (Next.js)
+Page paiement   → pay.neetpay.com (React SPA dans Next.js)
+Landing         → neetpay.com (Next.js)
+Auth dashboard  → NextAuth beta (email/password)
+```
+
+---
+
+## 6. API Routes (Rust — api.neetpay.com/v1)
+
+### Invoices
+| Methode | Route | Description |
+|---------|-------|-------------|
+| POST | `/v1/invoice` | Creer une invoice (genere subaddress + swap order) |
+| GET | `/v1/invoice/:id` | Statut d'une invoice |
+
+### Marchands (dashboard)
+| Methode | Route | Description |
+|---------|-------|-------------|
+| POST | `/v1/merchant/register` | Inscription marchand |
+| GET | `/v1/merchant/me` | Profil marchand |
+| PUT | `/v1/merchant/settings` | Config (webhook, xmr address) |
+
+---
+
+## 7. Workers (Rust — background tasks)
+
+| Worker | Frequence | Description |
+|--------|-----------|-------------|
+| `swap_poller` | 15s | Poll Wagyu GET /v1/order/:id pour les invoices actives |
+| `xmr_watcher` | 30-60s | monero-wallet-rpc get_transfers, confirme apres 10 blocs |
+| `webhook_dispatcher` | on event | POST webhook au marchand quand statut change |
+| `expirer` | 60s | Expire les invoices passees |
+
+---
+
+## 8. Variables d'environnement
 
 ```bash
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/neetpay
+REDIS_URL=redis://localhost:6379
+
+# Monero Node
+MONERO_RPC_URL=http://localhost:18082/json_rpc
+MONERO_WALLET_NAME=neetpay_wallet
+MONERO_WALLET_PASSWORD=xxx
+
+# Wagyu
+WAGYU_API_KEY=wg_xxx
+WAGYU_FEE_PERCENT=1
+WAGYU_FEE_ADDRESS=0x...
+
+# Trocador
+TROCADOR_API_KEY=xxx
+TROCADOR_MARKUP=0
+
 # App
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-DATABASE_URL=postgresql://...
-
-# Auth
-AUTH_SECRET=...
-AUTH_URL=http://localhost:3000
-
-# Alchemy (EVM + TRON)
-ALCHEMY_API_KEY=...
-ALCHEMY_WEBHOOK_SIGNING_KEY=...
-
-# Helius (SOL RPC + webhooks)
-HELIUS_API_KEY=...
-HELIUS_RPC_URL=https://mainnet.helius-rpc.com/?api-key=...
-
-# Bitcoin Core (bitcoind natif VPS)
-BITCOIN_RPC_URL=http://<vps-ip>:8332
-BITCOIN_RPC_USER=
-BITCOIN_RPC_PASSWORD=
-
-# Wallet
-SEED_ENCRYPTION_KEY=...           # passphrase AES-256-GCM
-ENCRYPTED_SEED=...                # base64(salt|iv|tag|ciphertext)
-
-# Nodes natifs (VPS)
-LITECOIN_RPC_URL=http://<vps-ip>:9332
-LITECOIN_RPC_USER=
-LITECOIN_RPC_PASSWORD=
-DOGECOIN_RPC_URL=http://<vps-ip>:22555
-DOGECOIN_RPC_USER=
-DOGECOIN_RPC_PASSWORD=
-MONERO_WALLET_RPC_URL=http://<vps-ip>:18083/json_rpc
-MONERO_WALLET_RPC_USER=...
-MONERO_WALLET_RPC_PASSWORD=...
-
-# Swap — THORChain (primary cross-chain)
-THORCHAIN_NODE_URL=https://thornode.ninerealms.com
-THORCHAIN_AFFILIATE_ID=np
-THORCHAIN_AFFILIATE_FEE_BPS=30
-
-# Swap — 1inch Fusion (EVM DEX)
-ONEINCH_API_KEY=
-
-# Swap — SideShift (fallback)
-SIDESHIFT_SECRET=...
-SIDESHIFT_AFFILIATE_ID=...
-
-# Cron
-CRON_SECRET=...
+APP_ENV=development
+APP_PORT=8080
+JWT_SECRET=xxx
+WEBHOOK_SECRET=xxx
+NEETPAY_FEE_PERCENT=0.4
 ```
 
 ---
 
-## 10. Roadmap technique
+## 9. Structure des fichiers (Rust backend)
 
-### Phase 1 — Done
-- [x] Chain providers : EVM, BTC, SOL, TRON, XMR
-- [x] HD Wallet avec AES-256-GCM
-- [x] Payment engine avec polling + webhooks
-- [x] Dashboard complet
-
-### Phase 2 — Done (cette session)
-- [x] LTC provider natif (litecoind RPC)
-- [x] DOGE provider natif (dogecoind RPC)
-- [x] THORChain swap integration
-- [x] 1inch Fusion swap integration
-- [x] SideShift adapter (fallback)
-- [x] Smart swap router
-- [x] Suppression BlockCypher
-
-### Phase 3 — En cours (infra)
-- [x] Installer monerod + monero-wallet-rpc sur le VPS
-- [x] Installer litecoind + dogecoind sur le VPS
-- [x] Installer bitcoind sur le VPS
-- [ ] Configurer BTC provider : bitcoind natif (code)
-- [ ] Migrer SOL provider : Alchemy → Helius (RPC + webhooks)
-- [ ] Obtenir API key Helius
-- [ ] Configurer affiliate ID THORChain definitif
-
-### Phase 4 — Next
-- [ ] Obtenir API key 1inch (activer le fallback same-chain EVM)
-- [ ] Monitoring sur les nodes VPS
-- [ ] Drop SideShift quand THORChain couvre assez de pairs
-
-### Phase 5 — Quand le volume le justifie
-- [ ] ETH node (Reth ou geth) → remplace Alchemy EVM
-- [ ] BSC / Polygon nodes natifs
-- [ ] TRON node natif (java-tron)
+```
+neetpay-api/
+├── Cargo.toml
+├── .env
+├── migrations/
+│   ├── 001_merchants.sql
+│   ├── 002_invoices.sql
+│   └── 003_webhook_logs.sql
+└── src/
+    ├── main.rs
+    ├── config.rs
+    ├── db.rs
+    ├── errors.rs
+    ├── models/
+    │   ├── merchant.rs
+    │   ├── invoice.rs
+    │   └── webhook_log.rs
+    ├── routes/
+    │   ├── mod.rs
+    │   ├── invoices.rs
+    │   ├── merchants.rs
+    │   └── webhooks.rs
+    ├── services/
+    │   ├── mod.rs
+    │   ├── wagyu.rs
+    │   ├── trocador.rs
+    │   ├── monero.rs
+    │   ├── invoice.rs
+    │   └── webhook.rs
+    └── workers/
+        ├── mod.rs
+        ├── swap_poller.rs
+        └── xmr_watcher.rs
+```
 
 ---
 
-## Structure des fichiers
+## 10. Frontend (Next.js — inchange sauf adaptations)
+
+Le frontend Next.js reste pour :
+- **neetpay.com** — landing page (animations GSAP, videos)
+- **app.neetpay.com** — dashboard marchand (invoices, analytics, settings)
+- **pay.neetpay.com** — page de paiement (affiche deposit address)
+
+**Pages supprimees :** swap, wallet multi-chain
+**Pages modifiees :** dashboard overview (XMR-only), payments → invoices, settings (XMR wallet)
+**Pages gardees :** landing, pricing, docs, auth, analytics, links, developers, security
+
+---
+
+## 11. Fees
 
 ```
-src/lib/
-├── chains/
-│   ├── types.ts              # ChainProvider interface
-│   ├── registry.ts           # CHAIN_REGISTRY (24 currencies)
-│   ├── evm-provider.ts       # ETH, Polygon, BSC, etc. (Alchemy RPC)
-│   ├── bitcoin-provider.ts   # BTC (bitcoind natif VPS)
-│   ├── solana-provider.ts    # SOL (Helius RPC)
-│   ├── tron-provider.ts      # TRX (Alchemy RPC)
-│   ├── monero-provider.ts    # XMR (monerod natif VPS)
-│   ├── litecoin-provider.ts  # LTC (litecoind natif VPS)
-│   └── dogecoin-provider.ts  # DOGE (dogecoind natif VPS)
-├── swap/
-│   ├── types.ts              # SwapProvider interface
-│   ├── router.ts             # Smart routing (THORChain primary)
-│   ├── thorchain.ts          # THORChain cross-chain swaps
-│   ├── oneinch.ts            # 1inch Fusion (fallback EVM DEX)
-│   ├── sideshift.ts          # SideShift API client
-│   └── sideshift-adapter.ts  # SideShift → SwapProvider adapter (fallback)
-├── wallet/
-│   ├── hd-wallet.ts          # BIP-39/44/84 derivation
-│   ├── kms.ts                # AES-256-GCM encrypt/decrypt
-│   └── wallet-service.ts     # Balances, withdrawals, deposits
-├── payment/
-│   ├── engine.ts             # Create, check, expire, webhook
-│   └── poller.ts             # Cron cycle orchestration
-├── price/
-│   └── coingecko.ts          # Alchemy Prices API (pas CoinGecko malgre le nom)
-└── analytics/
-    └── tracker.ts            # Event tracking
+Payeur envoie 100 USDC (Arbitrum) → marchand veut 0.5 XMR
+
+  neetpay fee 0.4%     →  0.002 XMR
+  Wagyu fee (integrator) →  configurable
+  Network fee            →  variable
+  Marchand recoit        →  ~0.498 XMR
+
+Couts fixes :
+  VPS (monerod)          →  ~$20-30/mois
+  Redis                  →  ~$5/mois
+  Total                  →  ~$30/mois
+
+Break-even : ~7.5K$ volume mensuel
 ```
+
+---
+
+## 12. Roadmap
+
+### Phase 1 — Core (MVP)
+- [ ] Config + DB + migrations (Rust)
+- [ ] Client Wagyu (quote + order + poll)
+- [ ] Client Trocador (new_rate + new_trade + webhook)
+- [ ] Client monero-wallet-rpc (subaddress + get_transfers)
+- [ ] Route POST /v1/invoice
+- [ ] Worker swap_poller
+- [ ] Worker xmr_watcher
+- [ ] Webhooks vers marchands
+
+### Phase 2 — Dashboard
+- [ ] Auth marchands (API key)
+- [ ] Dashboard Next.js (invoices, stats, settings)
+- [ ] Page paiement pay.neetpay.com
+
+### Phase 3 — White-label
+- [ ] Widget JS embeddable
+- [ ] Customisation branding
+- [ ] SDK TypeScript officiel
+
+### Phase 4 — Cartes Prepayees & Gift Cards
+- [ ] Listing cartes prepayees Visa/MC (Trocador `GET /cards`)
+- [ ] Commande carte prepayee (`GET /order_prepaidcard`)
+- [ ] Listing gift cards par pays (`GET /giftcards?country=`)
+- [ ] Commande gift card (`GET /order_giftcard`)
+- [ ] Suivi commande (`GET /trade?id=`)
+- [ ] UI checkout carte dans le dashboard
+
+---
+
+## 13. Cartes Prepayees & Gift Cards (via Trocador API)
+
+Permet aux users de depenser leur XMR dans le monde reel en achetant des cartes Visa/Mastercard prepayees ou des gift cards de centaines de vendeurs.
+
+### Endpoints utilises
+
+| Methode | Route | Description |
+|---------|-------|-------------|
+| GET | `/cards` | Lister les cartes prepayees Visa/MC disponibles (provider, currency, brand, amounts) |
+| GET | `/order_prepaidcard` | Commander une carte prepayee avec crypto |
+| GET | `/giftcards?country=` | Lister les gift cards par pays (name, category, min/max, denominations) |
+| GET | `/order_giftcard` | Commander une gift card avec crypto |
+| GET | `/trade?id=` | Statut de la commande (suivi livraison) |
+
+### Flow
+
+```
+1. User choisit une carte/gift card dans l'UI
+2. NeetPay appelle order_prepaidcard ou order_giftcard
+   {
+     provider/product_id, ticker_from, network_from,
+     amount, email, card_markup
+   }
+3. Trocador retourne deposit_address + deposit_amount
+4. User envoie XMR/BTC/etc. a deposit_address
+5. Poll /trade jusqu'a status=finished
+6. Code de carte envoye a l'email du user
+```
+
+### Revenue model
+
+```
+card_markup=2%  → NeetPay garde 100% du markup
+card_markup=0   → Trocador partage 50% de sa commission
+Gift cards      → meme modele que les cartes prepayees
+```
+
+### Regles privacy
+
+- Email requis uniquement pour livraison du code carte
+- Pas de stockage de l'email apres livraison reussie
+- Pas de lien entre identite et transaction XMR
+- Aucun KYC cote NeetPay

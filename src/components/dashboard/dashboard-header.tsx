@@ -118,7 +118,7 @@ interface DashboardHeaderProps {
   userName?: string | null;
 }
 
-export function DashboardHeader({ userName }: DashboardHeaderProps) {
+export function DashboardHeader({ userName }: DashboardHeaderProps = {}) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();

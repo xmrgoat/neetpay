@@ -86,7 +86,7 @@ export function CtaSection() {
           </p>
 
           <div data-cta-btn className="mt-9 flex items-center justify-center">
-            <Link href="/register" className="btn-rainbow rounded-full cursor-pointer">
+            <Link href="/login" className="btn-rainbow rounded-full cursor-pointer">
               <div className="btn-rainbow-inner flex items-center justify-center h-14 px-10 rounded-full">
                 <span className="font-semibold text-lg">Create your account</span>
                 <ArrowRight className="w-5 h-5 ml-2 text-black" />

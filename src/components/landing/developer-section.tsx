@@ -198,7 +198,7 @@ export function DeveloperSection() {
           data-dev-cta
           className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10"
         >
-          <Link href="/register">
+          <Link href="/login">
             <Button size="lg" className="h-12 px-6 text-base font-semibold">
               Get your API key
               <ArrowRight size={16} />

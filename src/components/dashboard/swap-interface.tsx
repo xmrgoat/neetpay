@@ -31,8 +31,11 @@ import {
   FIAT_SIGN,
   USD_TO_FIAT,
   type CryptoHolding,
-  type PanelType,
 } from "./crypto-selector";
+
+// Swap functionality has been removed in the XMR-only pivot.
+// This component is kept as a placeholder but is no longer used.
+type PanelType = "send" | "receive";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

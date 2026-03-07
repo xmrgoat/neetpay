@@ -1,17 +1,43 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { WidgetProvider } from "@/hooks/use-widget-context";
+import { isAuthenticated, getMerchant } from "@/hooks/useAuth";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+  const [merchantEmail, setMerchantEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.replace("/login");
+      return;
+    }
+
+    getMerchant().then((m) => {
+      if (!m) {
+        router.replace("/login");
+        return;
+      }
+      setMerchantEmail(m.email);
+      setReady(true);
+    });
+  }, [router]);
+
+  if (!ready) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-surface">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
+      </div>
+    );
   }
 
   return (
@@ -23,7 +49,7 @@ export default async function DashboardLayout({
           <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/80 pl-14 pr-4 backdrop-blur-sm lg:pl-6 lg:pr-6">
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                Welcome back{session.user.name ? `, ${session.user.name}` : ""}
+                Welcome back{merchantEmail ? `, ${merchantEmail}` : ""}
               </p>
               <p className="text-xs text-muted">
                 {new Date().toLocaleDateString("en-US", {
@@ -33,7 +59,7 @@ export default async function DashboardLayout({
                 })}
               </p>
             </div>
-            <DashboardHeader userName={session.user.name} />
+            <DashboardHeader />
           </header>
 
           {/* Page content — fills remaining height, children handle their own scroll */}

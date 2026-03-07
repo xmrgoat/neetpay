@@ -6,40 +6,39 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  WalletMinimal,
-  Banknote,
-  ArrowLeftRight,
+  FileText,
   Link2,
-  ReceiptText,
-  HeartHandshake,
-  ChartLine,
-  Share2,
-  Terminal,
-  Settings2,
+  BarChart3,
+  Code,
+  CreditCard,
+  Settings,
   Menu,
   X,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { logout, getToken } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { DASHBOARD_NAV } from "@/lib/constants";
 
 const STORAGE_KEY = "sidebar-collapsed";
 
-const NAV_ITEMS = [
-  { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Payments", icon: Banknote, href: "/dashboard/payments" },
-  { label: "Payment Links", icon: Link2, href: "/dashboard/links" },
-  { label: "Invoices", icon: ReceiptText, href: "/dashboard/invoices" },
-  { label: "Donations", icon: HeartHandshake, href: "/dashboard/donations" },
-  { label: "Wallet", icon: WalletMinimal, href: "/dashboard/wallet" },
-  { label: "Swap", icon: ArrowLeftRight, href: "/dashboard/swap" },
-  { label: "Analytics", icon: ChartLine, href: "/dashboard/analytics" },
-  { label: "Referrals", icon: Share2, href: "/dashboard/referrals" },
-  { label: "Developers", icon: Terminal, href: "/dashboard/developers" },
-  { label: "Settings", icon: Settings2, href: "/dashboard/settings" },
-] as const;
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  LayoutDashboard,
+  FileText,
+  Link: Link2,
+  BarChart3,
+  Code,
+  CreditCard,
+  Settings,
+};
+
+const NAV_ITEMS = DASHBOARD_NAV.map((item) => ({
+  label: item.label,
+  icon: ICON_MAP[item.icon] ?? LayoutDashboard,
+  href: item.href,
+}));
 
 function getStoredCollapsed(): boolean {
   if (typeof window === "undefined") return false;
@@ -52,7 +51,17 @@ function getStoredCollapsed(): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const token = getToken();
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUserEmail(payload.email || null);
+      }
+    } catch { /* ignore */ }
+  }, []);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -217,19 +226,19 @@ export function Sidebar() {
               <div
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.12] text-[11px] font-medium uppercase text-white/70"
               >
-                {session?.user?.name?.charAt(0) ?? session?.user?.email?.charAt(0) ?? "U"}
+                {userEmail?.charAt(0)?.toUpperCase() ?? "U"}
               </div>
 
               {(!collapsed || mobile) && (
                 <>
                   <span className="truncate text-[13px] text-foreground-secondary">
-                    {session?.user?.name ?? session?.user?.email ?? "User"}
+                    {userEmail ?? "User"}
                   </span>
                   <LogOut
                     className="ml-auto h-3.5 w-3.5 shrink-0 text-white/20 transition-colors hover:text-foreground-secondary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      signOut({ callbackUrl: "/login" });
+                      logout();
                     }}
                   />
                 </>
@@ -249,7 +258,7 @@ export function Sidebar() {
                   Settings
                 </Link>
                 <button
-                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  onClick={() => logout()}
                   className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-error hover:bg-error/[0.06] transition-colors"
                 >
                   <LogOut className="h-3.5 w-3.5" />
@@ -265,7 +274,7 @@ export function Sidebar() {
               >
                 <div className="px-3 py-2 border-b border-border">
                   <p className="text-[11px] text-muted truncate">
-                    {session?.user?.email ?? ""}
+                    {userEmail ?? ""}
                   </p>
                 </div>
                 <Link
@@ -277,7 +286,7 @@ export function Sidebar() {
                 </Link>
                 <div className="border-t border-border py-1">
                   <button
-                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    onClick={() => logout()}
                     className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-error hover:bg-error/[0.06] transition-colors"
                   >
                     <LogOut className="h-3.5 w-3.5" />

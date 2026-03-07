@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://assets.coingecko.com; font-src 'self'; connect-src 'self' https://*.alchemy.com https://*.helius.xyz; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://assets.coingecko.com; font-src 'self'; connect-src 'self' http://localhost:8080 https://*.alchemy.com https://*.helius.xyz; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

@@ -9,14 +9,14 @@
    Semantic color tokens — Light
    ------------------------------------------------ */
 :root {
-  --background: #f7f7f8;
-  --surface: #efeff1;
-  --elevated: #f7f7f8;
-  --border: #dcdce0;
-  --border-hover: #c8c8ce;
+  --background: #e8e8ec;
+  --surface: #dfdfe4;
+  --elevated: #e8e8ec;
+  --border: #ccccd2;
+  --border-hover: #b8b8c0;
   --foreground: #1a1a1e;
-  --foreground-secondary: #5c5c66;
-  --muted: #9393a0;
+  --foreground-secondary: #52525c;
+  --muted: #858592;
   --primary: #ff6600;
   --primary-hover: #e65c00;
   --primary-muted: rgba(255, 102, 0, 0.08);
@@ -30,12 +30,12 @@
   --info-muted: rgba(37, 99, 235, 0.1);
 
   /* Glass tokens — light */
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-hover: rgba(255, 255, 255, 0.65);
+  --glass-bg: rgba(255, 255, 255, 0.40);
+  --glass-bg-hover: rgba(255, 255, 255, 0.50);
   --glass-blur: 14px;
-  --glass-border: rgba(255, 255, 255, 0.30);
-  --glass-border-hover: rgba(255, 255, 255, 0.45);
-  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.22);
+  --glass-border-hover: rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.08);
   --glass-shine: 0.18;
 }
 

@@ -31,18 +31,7 @@ import {
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const NETWORK_FEES: Record<string, { fee: number; currency: string }> = {
-  BTC: { fee: 0.00005, currency: "BTC" },
-  ETH: { fee: 0.002, currency: "ETH" },
-  SOL: { fee: 0.00025, currency: "SOL" },
   XMR: { fee: 0.0001, currency: "XMR" },
-  USDT: { fee: 1.0, currency: "USDT" },
-  USDC: { fee: 1.0, currency: "USDC" },
-  TRX: { fee: 1.0, currency: "TRX" },
-  BNB: { fee: 0.0005, currency: "BNB" },
-  LTC: { fee: 0.001, currency: "LTC" },
-  DOGE: { fee: 2.0, currency: "DOGE" },
-  TON: { fee: 0.01, currency: "TON" },
-  XRP: { fee: 0.01, currency: "XRP" },
 };
 
 // ─── Send Interface ─────────────────────────────────────────────────────────
@@ -56,7 +45,7 @@ interface SendInterfaceProps {
 
 export function SendInterface({ holdings, onBack, activePanel, onSwitchPanel }: SendInterfaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState("BTC");
+  const [selectedCurrency, setSelectedCurrency] = useState("XMR");
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [inputInFiat, setInputInFiat] = useState(false);

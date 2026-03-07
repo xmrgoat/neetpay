@@ -1,82 +1,54 @@
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import { z } from "zod";
-import { db } from "@/lib/db";
+import { cookies } from "next/headers";
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(12),
-});
+interface JwtPayload {
+  merchant_id: string;
+  email: string;
+  exp: number;
+  iat: number;
+}
 
-const loginAttempts = new Map<string, { count: number; blockedUntil: number }>();
+interface AuthSession {
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+  };
+}
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true,
-  session: {
-    strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-    updateAge: 24 * 60 * 60, // refresh token every 24h
-  },
-  pages: {
-    signIn: "/login",
-  },
-  providers: [
-    Credentials({
-      credentials: {
-        email: {},
-        password: {},
+/**
+ * Server-side auth check — reads the JWT from the `neetpay_token` cookie,
+ * decodes the payload, and returns a session-like object compatible with
+ * the existing dashboard pages.
+ *
+ * Note: This does NOT verify the JWT signature (that's the backend's job).
+ * It only extracts the claims for server-side rendering. The actual auth
+ * verification happens when the frontend calls the Rust backend.
+ */
+export async function auth(): Promise<AuthSession | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("neetpay_token")?.value;
+
+  if (!token) return null;
+
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf8")
+    ) as JwtPayload;
+
+    // Check expiry.
+    if (payload.exp * 1000 < Date.now()) return null;
+
+    return {
+      user: {
+        id: payload.merchant_id,
+        email: payload.email,
+        name: null,
       },
-      async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
-
-        const { email } = parsed.data;
-
-        const attempts = loginAttempts.get(email);
-        if (attempts && attempts.blockedUntil > Date.now()) {
-          throw new Error("Too many login attempts. Try again later.");
-        }
-
-        const user = await db.user.findUnique({
-          where: { email },
-        });
-        if (!user) return null;
-
-        const valid = await compare(parsed.data.password, user.hashedPassword);
-        if (!valid) {
-          const current = loginAttempts.get(email) || { count: 0, blockedUntil: 0 };
-          current.count++;
-          if (current.count >= 10) {
-            current.blockedUntil = Date.now() + 15 * 60 * 1000;
-            current.count = 0;
-          }
-          loginAttempts.set(email, current);
-          return null;
-        }
-
-        loginAttempts.delete(email);
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        };
-      },
-    }),
-  ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
-  },
-});
+    };
+  } catch {
+    return null;
+  }
+}

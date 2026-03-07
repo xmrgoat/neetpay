@@ -538,7 +538,7 @@ export function TerminalHero() {
               placeholder="Enter your email"
               className="flex-1 bg-transparent text-sm text-white placeholder:text-[#888] outline-none min-w-0"
             />
-            <Link href="/register">
+            <Link href="/login">
               <button
                 data-cta-btn
                 className="shrink-0 flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-black hover:bg-primary-hover transition-all whitespace-nowrap"

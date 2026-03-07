@@ -4,7 +4,6 @@ import { useRef, useState, useCallback } from "react";
 import gsap from "gsap";
 import { WalletCard } from "./wallet-card";
 import { CryptoAssets } from "./crypto-assets";
-import { SwapInterface } from "./swap-interface";
 import { SendInterface } from "./send-interface";
 import { ReceiveInterface } from "./receive-interface";
 
@@ -23,7 +22,7 @@ interface Props {
   walletAddress?: string;
 }
 
-type PanelType = "send" | "receive" | "swap";
+type PanelType = "send" | "receive";
 
 export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddress }: Props) {
   const [activePanel, setActivePanel] = useState<PanelType | null>(null);
@@ -69,13 +68,11 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddr
   const switchPanel = useCallback((panel: PanelType) => {
     if (isAnimating.current) return;
 
-    // Clicking the same active tab → close
     if (activePanel === panel) {
       closePanel();
       return;
     }
 
-    // Already open → cross-fade
     if (activePanel) {
       isAnimating.current = true;
       if (panelRef.current) {
@@ -99,15 +96,14 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddr
       return;
     }
 
-    // Nothing open → slide in
     openPanel(panel);
   }, [activePanel, openPanel, closePanel]);
 
   return (
     <div className="relative min-h-0 overflow-y-auto overflow-x-hidden lg:col-span-3 pb-4 no-scrollbar">
-      {/* ── Normal content (wallet + assets) ── */}
+      {/* Normal content (wallet + assets) */}
       <div ref={contentRef} className="flex flex-col gap-3">
-        {/* Wallet card — sticky at top */}
+        {/* Wallet card */}
         <div className="sticky top-0 z-20 pb-1">
           <WalletCard
             totalUsd={totalUsd}
@@ -116,9 +112,7 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddr
             walletAddress={walletAddress}
             onSendClick={() => switchPanel("send")}
             onReceiveClick={() => switchPanel("receive")}
-            onSwapClick={() => switchPanel("swap")}
           />
-          {/* Fade mask */}
           <div className="pointer-events-none absolute -bottom-3 left-0 right-0 h-5 bg-gradient-to-b from-surface to-transparent" />
         </div>
         {/* Assets */}
@@ -127,15 +121,12 @@ export function DashboardRightColumn({ totalUsd, change24h, holdings, walletAddr
         </div>
       </div>
 
-      {/* ── Panel overlay — slides from right ── */}
+      {/* Panel overlay */}
       {activePanel && (
         <div
           ref={panelRef}
           className="absolute inset-0 z-30 overflow-y-auto no-scrollbar bg-background"
         >
-          {activePanel === "swap" && (
-            <SwapInterface holdings={holdings} onBack={closePanel} activePanel={activePanel} onSwitchPanel={switchPanel} />
-          )}
           {activePanel === "send" && (
             <SendInterface holdings={holdings} onBack={closePanel} activePanel={activePanel} onSwitchPanel={switchPanel} />
           )}

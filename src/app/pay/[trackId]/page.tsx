@@ -1,140 +1,85 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
-import { SUPPORTED_CRYPTOS } from "@/lib/constants";
-import { CheckoutClient } from "./checkout-client";
+import { API_URL } from "@/lib/constants";
+import { PayClient } from "./pay-client";
 
 interface PageProps {
   params: Promise<{ trackId: string }>;
 }
 
-// Block explorer URLs by chain
-const EXPLORER_TX_URLS: Record<string, string> = {
-  ethereum: "https://etherscan.io/tx/",
-  bitcoin: "https://mempool.space/tx/",
-  solana: "https://solscan.io/tx/",
-  monero: "https://xmrchain.net/tx/",
-  tron: "https://tronscan.org/#/transaction/",
-  bsc: "https://bscscan.com/tx/",
-  polygon: "https://polygonscan.com/tx/",
-  arbitrum: "https://arbiscan.io/tx/",
-  optimism: "https://optimistic.etherscan.io/tx/",
-  avalanche: "https://snowtrace.io/tx/",
-  litecoin: "https://blockchair.com/litecoin/transaction/",
-  dogecoin: "https://blockchair.com/dogecoin/transaction/",
-};
+interface InvoiceResponse {
+  id: string;
+  merchant_name: string | null;
+  description: string | null;
+  amount_xmr: number;
+  amount_fiat: number | null;
+  fiat_currency: string | null;
+  subaddress: string;
+  status: string;
+  swap_provider: string | null;
+  swap_order_id: string | null;
+  deposit_address: string | null;
+  deposit_chain: string | null;
+  deposit_token: string | null;
+  deposit_amount: number | null;
+  tx_hash: string | null;
+  confirmations: number;
+  expires_at: string | null;
+  created_at: string;
+}
 
-function getCryptoName(symbol: string): string {
-  const entry = SUPPORTED_CRYPTOS.find((c) => c.symbol === symbol);
-  return entry?.name ?? symbol;
+async function fetchInvoice(id: string): Promise<InvoiceResponse | null> {
+  try {
+    const res = await fetch(`${API_URL}/v1/invoices/${id}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data ?? json;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { trackId } = await params;
+  const invoice = await fetchInvoice(trackId);
 
-  const payment = await db.payment.findUnique({
-    where: { trackId },
-    select: { amount: true, currency: true, payCurrency: true },
-  });
-
-  if (!payment) {
-    return { title: "Payment not found" };
+  if (!invoice) {
+    return { title: "Invoice not found" };
   }
 
-  const cryptoName = payment.payCurrency
-    ? getCryptoName(payment.payCurrency)
-    : "";
+  const fiatLabel =
+    invoice.amount_fiat && invoice.fiat_currency
+      ? ` ($${invoice.amount_fiat} ${invoice.fiat_currency})`
+      : "";
 
   return {
-    title: `Pay ${payment.amount} ${payment.currency}${cryptoName ? ` in ${cryptoName}` : ""}`,
+    title: `Pay ${invoice.amount_xmr} XMR${fiatLabel}`,
     robots: { index: false, follow: false },
   };
 }
 
 export default async function PayPage({ params }: PageProps) {
   const { trackId } = await params;
-
-  const payment = await db.payment.findUnique({
-    where: { trackId },
-    select: {
-      trackId: true,
-      userId: true,
-      amount: true,
-      currency: true,
-      status: true,
-      description: true,
-      chain: true,
-      payCurrency: true,
-      payAmount: true,
-      payAddress: true,
-      network: true,
-      txId: true,
-      confirmations: true,
-      requiredConfs: true,
-      expiresAt: true,
-      paidAt: true,
-      createdAt: true,
-      returnUrl: true,
-      metadata: true,
-    },
-  });
-
-  if (!payment) {
-    notFound();
-  }
-
-  // Load merchant branding
-  const branding = await db.merchantBranding.findUnique({
-    where: { userId: payment.userId },
-    select: {
-      logoUrl: true,
-      brandName: true,
-      primaryColor: true,
-      hideNeetpay: true,
-    },
-  });
-
-  // Determine block explorer base URL
-  const explorerTxUrl = payment.chain
-    ? EXPLORER_TX_URLS[payment.chain] ?? null
-    : null;
-
-  // Get crypto display name
-  const cryptoName = payment.payCurrency
-    ? getCryptoName(payment.payCurrency)
-    : null;
+  const invoice = await fetchInvoice(trackId);
 
   return (
-    <main className="min-h-dvh flex items-center justify-center bg-background px-4 py-8">
-      <Suspense fallback={null}>
-        <CheckoutClient
-          payment={{
-            trackId: payment.trackId,
-            amount: payment.amount,
-            currency: payment.currency,
-            status: payment.status,
-            description: payment.description,
-            chain: payment.chain,
-            payCurrency: payment.payCurrency,
-            payAmount: payment.payAmount,
-            payAddress: payment.payAddress,
-            network: payment.network,
-            txId: payment.txId,
-            confirmations: payment.confirmations,
-            requiredConfs: payment.requiredConfs,
-            expiresAt: payment.expiresAt?.toISOString() ?? null,
-            paidAt: payment.paidAt?.toISOString() ?? null,
-            createdAt: payment.createdAt.toISOString(),
-            returnUrl: payment.returnUrl,
-            metadata: payment.metadata as Record<string, unknown> | null,
-          }}
-          branding={branding}
-          cryptoName={cryptoName}
-          explorerTxUrl={explorerTxUrl}
-        />
+    <main className="min-h-dvh flex items-center justify-center px-4 py-8"
+      style={{ backgroundColor: "#0a0a0a" }}
+    >
+      <Suspense
+        fallback={
+          <div className="w-full max-w-[480px] text-center">
+            <div className="animate-pulse-subtle font-mono text-sm" style={{ color: "#737373" }}>
+              Loading...
+            </div>
+          </div>
+        }
+      >
+        <PayClient invoice={invoice} invoiceId={trackId} />
       </Suspense>
     </main>
   );

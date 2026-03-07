@@ -39,10 +39,10 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
     <div className="space-y-5">
       <div>
         <h1 className="font-heading text-lg font-semibold text-foreground">
-          Payments
+          Invoices
         </h1>
         <p className="text-xs text-muted mt-0.5">
-          Track and manage all your transactions
+          Track and manage all your invoices
         </p>
       </div>
 

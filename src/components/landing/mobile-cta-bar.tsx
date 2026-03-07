@@ -19,7 +19,7 @@ export function MobileCtaBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-md border-t border-border px-4 py-3 safe-area-pb">
-      <Link href="/register" className="block">
+      <Link href="/login" className="block">
         <Button size="lg" className="h-12 w-full text-base font-semibold">
           Get your API key — free
         </Button>

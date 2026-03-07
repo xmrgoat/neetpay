@@ -529,7 +529,7 @@ export function FeaturesSection() {
             <span className="text-foreground">No vendor lock-in.</span>
           </p>
           <Link
-            href="/register"
+            href="/login"
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-colors shrink-0"
           >
             Start for free

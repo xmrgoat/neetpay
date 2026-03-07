@@ -24,22 +24,7 @@ import {
 // ─── Chain labels ───────────────────────────────────────────────────────────
 
 const CHAIN_LABELS: Record<string, string> = {
-  BTC: "Bitcoin Network",
-  ETH: "Ethereum (ERC-20)",
-  SOL: "Solana Network",
   XMR: "Monero Network",
-  USDT: "Tron (TRC-20)",
-  USDC: "Ethereum (ERC-20)",
-  TRX: "Tron Network",
-  BNB: "BNB Smart Chain",
-  LTC: "Litecoin Network",
-  DOGE: "Dogecoin Network",
-  TON: "TON Network",
-  XRP: "XRP Ledger",
-  MATIC: "Polygon Network",
-  ARB: "Arbitrum Network",
-  OP: "Optimism Network",
-  AVAX: "Avalanche C-Chain",
 };
 
 // ─── QR grid generator ──────────────────────────────────────────────────────
@@ -75,7 +60,7 @@ interface ReceiveInterfaceProps {
 
 export function ReceiveInterface({ holdings, onBack, activePanel, onSwitchPanel }: ReceiveInterfaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState("BTC");
+  const [selectedCurrency, setSelectedCurrency] = useState("XMR");
   const [copied, setCopied] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

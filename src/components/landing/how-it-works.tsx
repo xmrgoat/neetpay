@@ -294,7 +294,7 @@ export function HowItWorks() {
 
         {/* ── CTA ── */}
         <div className="text-center mt-14">
-          <Link href="/register">
+          <Link href="/login">
             <Button size="lg" className="h-12 px-8 text-base font-semibold">
               Create your account — takes 30 seconds
               <ArrowRight size={16} />

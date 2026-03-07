@@ -9,7 +9,6 @@ import {
   Search,
   ArrowUpRight,
   ArrowDownLeft,
-  ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CryptoIcon } from "@/components/icons/crypto-icons";
@@ -27,17 +26,11 @@ export interface CryptoHolding {
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 export const CRYPTO_NAMES: Record<string, string> = {
-  BTC: "Bitcoin", ETH: "Ethereum", SOL: "Solana", XMR: "Monero",
-  USDT: "Tether", USDC: "USD Coin", TRX: "Tron", BNB: "BNB",
-  LTC: "Litecoin", DOGE: "Dogecoin", TON: "Toncoin", XRP: "Ripple",
-  AVAX: "Avalanche", ARB: "Arbitrum", OP: "Optimism", MATIC: "Polygon",
+  XMR: "Monero",
 };
 
 export const CRYPTO_ICONS: Record<string, string> = {
-  BTC: "₿", ETH: "Ξ", SOL: "◎", XMR: "ɱ",
-  USDT: "₮", USDC: "$", TRX: "◈", BNB: "◆",
-  LTC: "Ł", DOGE: "Ð", TON: "◇", XRP: "✕",
-  AVAX: "▲", ARB: "◬", OP: "⬡", MATIC: "◈",
+  XMR: "ɱ",
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -107,12 +100,11 @@ export function AmountModeToggle({
 
 // ─── Panel Types & Tab Bar ──────────────────────────────────────────────────
 
-export type PanelType = "send" | "receive" | "swap";
+export type PanelType = "send" | "receive";
 
 const TAB_CONFIG: { id: PanelType; label: string; icon: typeof ArrowUpRight }[] = [
   { id: "send", label: "Send", icon: ArrowUpRight },
   { id: "receive", label: "Receive", icon: ArrowDownLeft },
-  { id: "swap", label: "Swap", icon: ArrowLeftRight },
 ];
 
 export function PanelTabBar({
@@ -136,8 +128,8 @@ export function PanelTabBar({
       <div
         className="absolute top-1 bottom-1 rounded-lg bg-primary transition-all duration-300 ease-out"
         style={{
-          width: `calc(${100 / 3}% - 5px)`,
-          left: `calc(${activeIdx * (100 / 3)}% + ${activeIdx === 0 ? 4 : activeIdx === 1 ? 2 : 0}px)`,
+          width: `calc(${100 / 2}% - 5px)`,
+          left: `calc(${activeIdx * (100 / 2)}% + ${activeIdx === 0 ? 4 : 0}px)`,
         }}
       />
 

@@ -2,6 +2,8 @@ export const SITE_NAME = "neetpay";
 export const SITE_TAGLINE = "Pay without permission.";
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export const PRICING_PLANS = {
   free: {
@@ -10,7 +12,7 @@ export const PRICING_PLANS = {
     priceAnnual: 0,
     description: "100 tx/month. All features. No credit card.",
     features: [
-      "Full API + all 18 cryptocurrencies",
+      "Full API + all supported cryptocurrencies",
       "Webhook notifications",
       "Payment links",
       "Email support",
@@ -43,17 +45,16 @@ export const PRICING_PLANS = {
   },
 } as const;
 
-export const PAYMENT_STATUSES = [
+export const INVOICE_STATUSES = [
   "pending",
+  "swap_pending",
   "confirming",
   "paid",
   "expired",
   "failed",
-  "underpaid",
-  "refunded",
 ] as const;
 
-export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 export const NAV_LINKS = [
   { label: "Products", href: "#products" },
@@ -64,23 +65,21 @@ export const NAV_LINKS = [
 
 export const DASHBOARD_NAV = [
   { label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
-  { label: "Wallet", href: "/dashboard/wallet", icon: "Wallet" },
-  { label: "Swap", href: "/dashboard/swap", icon: "Repeat" },
-  { label: "Payments", href: "/dashboard/payments", icon: "ArrowLeftRight" },
+  { label: "Invoices", href: "/dashboard/invoices", icon: "FileText" },
   { label: "Payment Links", href: "/dashboard/links", icon: "Link" },
   { label: "Analytics", href: "/dashboard/analytics", icon: "BarChart3" },
+  { label: "Spend", href: "/dashboard/spend", icon: "CreditCard" },
   { label: "Developers", href: "/dashboard/developers", icon: "Code" },
   { label: "Settings", href: "/dashboard/settings", icon: "Settings" },
 ] as const;
 
-export const PAYMENT_STATUS_CONFIG = {
+export const INVOICE_STATUS_CONFIG = {
   pending: { label: "Pending", color: "#eab308" },
+  swap_pending: { label: "Swap Pending", color: "#f97316" },
   confirming: { label: "Confirming", color: "#3b82f6" },
   paid: { label: "Paid", color: "#22c55e" },
   expired: { label: "Expired", color: "#737373" },
   failed: { label: "Failed", color: "#ef4444" },
-  underpaid: { label: "Underpaid", color: "#FF6600" },
-  refunded: { label: "Refunded", color: "#a855f7" },
 } as const;
 
 export const CRYPTO_COLORS: Record<string, string> = {
@@ -92,30 +91,18 @@ export const CRYPTO_COLORS: Record<string, string> = {
   BNB: "#F3BA2F",
   USDT: "#26A17B",
   USDC: "#2775CA",
-  MATIC: "#8247E5",
   LTC: "#BFBBBB",
   DOGE: "#C2A633",
-  XRP: "#23292F",
-  TON: "#0098EA",
-  AVAX: "#E84142",
   ARB: "#28A0F0",
-  OP: "#FF0420",
 };
 
 export const SUPPORTED_CRYPTOS = [
-  { symbol: "XMR", name: "Monero" },
-  { symbol: "BTC", name: "Bitcoin" },
-  { symbol: "ETH", name: "Ethereum" },
-  { symbol: "USDT", name: "Tether" },
-  { symbol: "USDC", name: "USD Coin" },
-  { symbol: "SOL", name: "Solana" },
-  { symbol: "TRX", name: "Tron" },
-  { symbol: "BNB", name: "BNB" },
-  { symbol: "LTC", name: "Litecoin" },
-  { symbol: "DOGE", name: "Dogecoin" },
-  { symbol: "TON", name: "Toncoin" },
-  { symbol: "XRP", name: "Ripple" },
-  { symbol: "AVAX", name: "Avalanche" },
-  { symbol: "ARB", name: "Arbitrum" },
-  { symbol: "OP", name: "Optimism" },
+  { symbol: "XMR", name: "Monero", chain: "xmr", provider: "direct" },
+  { symbol: "BTC", name: "Bitcoin", chain: "btc", provider: "wagyu" },
+  { symbol: "ETH", name: "Ethereum", chain: "arbitrum", provider: "wagyu" },
+  { symbol: "USDC", name: "USD Coin", chain: "arbitrum", provider: "wagyu" },
+  { symbol: "USDT", name: "Tether", chain: "arbitrum", provider: "wagyu" },
+  { symbol: "SOL", name: "Solana", chain: "solana", provider: "wagyu" },
+  { symbol: "TRX", name: "Tron", chain: "tron", provider: "trocador" },
+  { symbol: "BNB", name: "BNB", chain: "bsc", provider: "trocador" },
 ] as const;

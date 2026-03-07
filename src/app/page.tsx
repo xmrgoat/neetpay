@@ -322,7 +322,7 @@ export default function HomePage() {
             </Link>
 
             {/* Register button with LiquidMetal border */}
-            <Link href="/register" className="relative group">
+            <Link href="/login" className="relative group">
               <div className="relative h-10 w-36 rounded-full overflow-hidden cursor-pointer">
                 {/* LiquidMetal fills entire area */}
                 <div className="absolute inset-0">
@@ -398,7 +398,7 @@ export default function HomePage() {
                   Login
                 </button>
               </Link>
-              <Link href="/register">
+              <Link href="/login">
                 <div className="relative h-12 w-full rounded-full overflow-hidden">
                   <div className="absolute inset-0">
                     <LiquidMetal
@@ -532,7 +532,7 @@ export default function HomePage() {
           {/* CTA row */}
           <div data-line className="mt-8 flex items-center gap-4" style={{ opacity: 0 }}>
             {/* Primary CTA with LiquidMetal border */}
-            <Link href="/register" className="group">
+            <Link href="/login" className="group">
               <div className="relative h-12 w-44 rounded-full overflow-hidden cursor-pointer sm:h-14 sm:w-52">
                 <div className="absolute inset-0">
                   <LiquidMetal

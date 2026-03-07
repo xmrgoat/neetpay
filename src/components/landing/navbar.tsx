@@ -96,7 +96,7 @@ export function Navbar() {
             >
               Login
             </Link>
-            <Link href="/register" className="btn-rainbow rounded-full cursor-pointer">
+            <Link href="/login" className="btn-rainbow rounded-full cursor-pointer">
               <div className="btn-rainbow-inner flex items-center justify-center h-9 px-5 rounded-full">
                 <span className="font-semibold text-sm">Get Started</span>
                 <ArrowRight className="w-3.5 h-3.5 ml-1.5 text-black" />
@@ -141,7 +141,7 @@ export function Navbar() {
                   Login
                 </button>
               </Link>
-              <Link href="/register">
+              <Link href="/login">
                 <button className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-black hover:bg-primary-hover transition-all">
                   Get Started
                 </button>
