@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { verifyMagicLink } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import Link from "next/link";
 
 type State = "verifying" | "success" | "error";
 
-export default function VerifyPage() {
+function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [state, setState] = useState<State>("verifying");
@@ -94,5 +94,20 @@ export default function VerifyPage() {
         Redirecting to dashboard...
       </p>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
+          <p className="text-sm text-foreground-secondary">Loading...</p>
+        </div>
+      }
+    >
+      <VerifyContent />
+    </Suspense>
   );
 }
