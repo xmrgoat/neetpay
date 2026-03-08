@@ -9,6 +9,7 @@ interface BadgeProps {
 const colorMap: Record<PaymentStatus, string> = {
   paid: "bg-emerald-500/10 text-emerald-500",
   pending: "bg-amber-500/10 text-amber-500",
+  swap_pending: "bg-orange-500/10 text-orange-500",
   confirming: "bg-blue-500/10 text-blue-500",
   expired: "bg-neutral-500/10 text-neutral-500",
   failed: "bg-red-500/10 text-red-500",
@@ -19,6 +20,7 @@ const colorMap: Record<PaymentStatus, string> = {
 const dotColorMap: Record<PaymentStatus, string> = {
   paid: "bg-emerald-500",
   pending: "bg-amber-500",
+  swap_pending: "bg-orange-500",
   confirming: "bg-blue-500",
   expired: "bg-neutral-500",
   failed: "bg-red-500",

@@ -28,8 +28,9 @@ export interface Transaction {
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; dot: string; text: string }> = {
   paid:       { label: "Paid",       dot: "bg-success",       text: "text-success" },
-  confirming: { label: "Confirming", dot: "bg-primary",       text: "text-primary" },
-  pending:    { label: "Pending",    dot: "bg-warning",       text: "text-warning" },
+  confirming:   { label: "Confirming",   dot: "bg-primary",       text: "text-primary" },
+  swap_pending: { label: "Swap Pending", dot: "bg-warning",       text: "text-warning" },
+  pending:      { label: "Pending",      dot: "bg-warning",       text: "text-warning" },
   expired:    { label: "Expired",    dot: "bg-muted/50",      text: "text-muted" },
   failed:     { label: "Failed",     dot: "bg-error",         text: "text-error" },
   underpaid:  { label: "Underpaid",  dot: "bg-warning",       text: "text-warning" },

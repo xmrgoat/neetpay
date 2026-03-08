@@ -52,6 +52,8 @@ export const INVOICE_STATUSES = [
   "paid",
   "expired",
   "failed",
+  "underpaid",
+  "refunded",
 ] as const;
 
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
@@ -82,6 +84,8 @@ export const INVOICE_STATUS_CONFIG = {
   paid: { label: "Paid", color: "#22c55e" },
   expired: { label: "Expired", color: "#737373" },
   failed: { label: "Failed", color: "#ef4444" },
+  underpaid: { label: "Underpaid", color: "#eab308" },
+  refunded: { label: "Refunded", color: "#737373" },
 } as const;
 
 export const CRYPTO_COLORS: Record<string, string> = {

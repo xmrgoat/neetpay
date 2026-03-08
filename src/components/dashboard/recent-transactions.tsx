@@ -33,13 +33,14 @@ const CRYPTO_ICONS: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<PaymentStatus, string> = {
-  pending: "Pending", confirming: "Confirming", paid: "Paid",
+  pending: "Pending", swap_pending: "Swap Pending", confirming: "Confirming", paid: "Paid",
   expired: "Expired", failed: "Failed", underpaid: "Underpaid", refunded: "Refunded",
 };
 
 const STATUS_STYLE: Record<PaymentStatus, string> = {
   paid: "bg-success/15 text-success",
   confirming: "bg-primary/15 text-primary",
+  swap_pending: "bg-warning/15 text-warning",
   pending: "bg-warning/15 text-warning",
   expired: "bg-surface text-muted",
   failed: "bg-error/15 text-error",
