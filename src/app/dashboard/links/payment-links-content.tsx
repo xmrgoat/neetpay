@@ -22,8 +22,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { SITE_URL, PAYMENT_STATUS_CONFIG } from "@/lib/constants";
-import type { PaymentStatus } from "@/lib/constants";
+import { SITE_URL, INVOICE_STATUS_CONFIG } from "@/lib/constants";
+import type { InvoiceStatus } from "@/lib/constants";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -813,7 +813,7 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
 /* -------------------------------------------------------------------------- */
 
 function StatusBadge({ status }: { status: string }) {
-  const config = PAYMENT_STATUS_CONFIG[status as PaymentStatus];
+  const config = INVOICE_STATUS_CONFIG[status as InvoiceStatus];
   if (!config) {
     return (
       <span className="rounded-md bg-surface px-2 py-0.5 text-[10px] font-semibold uppercase text-foreground-secondary">
