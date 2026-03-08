@@ -41,7 +41,14 @@ export function middleware(req: NextRequest) {
   if (pathname === "/login") {
     const token = req.cookies.get("neetpay_token")?.value;
     if (token) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.exp * 1000 > Date.now()) {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+      } catch {
+        // Invalid token — let them stay on login.
+      }
     }
   }
 

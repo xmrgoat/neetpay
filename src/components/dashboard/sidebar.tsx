@@ -191,7 +191,7 @@ export function Sidebar() {
             />
             {(!collapsed || mobile) && (
               <span className="text-[15px] tracking-[-0.01em]">
-                <span className="text-foreground">neet</span>
+                <span className="text-white">neet</span>
                 <span className="text-primary">pay</span>
               </span>
             )}

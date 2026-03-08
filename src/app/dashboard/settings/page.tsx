@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+"use client";
+
+import { useSearchParams } from "next/navigation";
 import { SettingsTabs } from "@/components/dashboard/settings/settings-tabs";
 import { ProfileSection } from "@/components/dashboard/settings/profile-section";
 import { ApiKeysSection } from "@/components/dashboard/settings/api-keys-section";
@@ -8,72 +8,9 @@ import { WebhookSection } from "@/components/dashboard/settings/webhook-section"
 import { SubscriptionSection } from "@/components/dashboard/settings/subscription-section";
 import { SettlementSection } from "@/components/dashboard/settings/settlement-section";
 
-interface SettingsPageProps {
-  searchParams: Promise<{ tab?: string }>;
-}
-
-export default async function SettingsPage({ searchParams }: SettingsPageProps) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const params = await searchParams;
-  const activeTab = params.tab || "general";
-
-  const [user, apiKeys, subscription, webhookLogs] = await Promise.all([
-    db.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        name: true,
-        email: true,
-        plan: true,
-        webhookUrl: true,
-        webhookSecret: true,
-        xmrSettlementAddress: true,
-        autoForwardEnabled: true,
-        platformFeePercent: true,
-        minForwardAmount: true,
-      },
-    }),
-    db.apiKey.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-    }),
-    db.subscription.findFirst({
-      where: { userId: session.user.id, status: "active" },
-      orderBy: { createdAt: "desc" },
-    }),
-    db.webhookLog.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-  ]);
-
-  if (!user) redirect("/login");
-
-  // The DB value is an encrypted blob — slicing it would be meaningless.
-  // Show a fixed mask to indicate a secret is configured without leaking anything.
-  const maskedSecret = user.webhookSecret
-    ? "whsec_••••••••••••••••••••••••"
-    : null;
-
-  const maskedKeys = apiKeys.map((k) => ({
-    id: k.id,
-    name: k.name,
-    type: k.type,
-    maskedKey: k.keyPrefix,
-    lastUsed: k.lastUsed?.toISOString() ?? null,
-    createdAt: k.createdAt.toISOString(),
-  }));
-
-  const serializedLogs = webhookLogs.map((log) => ({
-    id: log.id,
-    url: log.url,
-    status: log.status,
-    success: log.success,
-    duration: log.duration,
-    createdAt: log.createdAt.toISOString(),
-  }));
+export default function SettingsPage() {
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") || "general";
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar space-y-6 pb-4">
@@ -90,11 +27,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
       {activeTab === "general" && (
         <div className="space-y-6">
-          <ProfileSection name={user.name} email={user.email} />
+          <ProfileSection name={null} email="" />
           <WebhookSection
-            currentUrl={user.webhookUrl}
-            webhookSecret={maskedSecret}
-            recentLogs={serializedLogs}
+            currentUrl={null}
+            webhookSecret={null}
+            recentLogs={[]}
           />
         </div>
       )}
@@ -102,32 +39,25 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       {activeTab === "payouts" && (
         <div className="space-y-6">
           <SettlementSection
-            xmrSettlementAddress={user.xmrSettlementAddress ?? null}
-            autoForwardEnabled={user.autoForwardEnabled ?? true}
-            platformFeePercent={user.platformFeePercent ?? 0.4}
-            minForwardAmount={user.minForwardAmount ?? 0.001}
+            xmrSettlementAddress={null}
+            autoForwardEnabled={true}
+            platformFeePercent={0.4}
+            minForwardAmount={0.001}
           />
         </div>
       )}
 
       {activeTab === "security" && (
         <div className="space-y-6">
-          <ApiKeysSection keys={maskedKeys} />
+          <ApiKeysSection keys={[]} />
         </div>
       )}
 
       {activeTab === "billing" && (
         <div className="space-y-6">
           <SubscriptionSection
-            plan={user.plan}
-            subscription={
-              subscription
-                ? {
-                    status: subscription.status,
-                    endDate: subscription.endDate?.toISOString() ?? null,
-                  }
-                : null
-            }
+            plan="free"
+            subscription={null}
           />
         </div>
       )}

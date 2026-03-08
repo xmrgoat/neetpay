@@ -1,66 +1,24 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+"use client";
+
 import { SITE_URL } from "@/lib/constants";
 import { ApiKeysManager } from "@/components/dashboard/developers/api-keys-manager";
 import { WebhookManager } from "@/components/dashboard/developers/webhook-manager";
+import { WidgetEmbed } from "@/components/dashboard/developers/widget-embed";
+import { WhiteLabel } from "@/components/dashboard/developers/white-label";
 import { QuickStartCodeClient, BaseUrlCopy } from "./client-bits";
 import { DevelopersShell } from "./shell";
+import { DevelopersTabs } from "./tabs";
 
-export default async function DevelopersPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+const EMPTY_BRANDING = {
+  logoUrl: null,
+  brandName: null,
+  primaryColor: null,
+  accentColor: null,
+  customDomain: null,
+  hideNeetpay: false,
+};
 
-  const [user, apiKeys, webhookLogs] = await Promise.all([
-    db.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        webhookUrl: true,
-        webhookSecret: true,
-      },
-    }),
-    db.apiKey.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-    }),
-    db.webhookLog.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
-  ]);
-
-  if (!user) redirect("/login");
-
-  // The DB value is an encrypted blob — slicing it would be meaningless.
-  // Show a fixed mask to indicate a secret is configured without leaking anything.
-  const maskedSecret = user.webhookSecret
-    ? "whsec_••••••••••••••••••••••••"
-    : null;
-
-  // Mask API keys for display
-  const maskedKeys = apiKeys.map((k) => ({
-    id: k.id,
-    name: k.name,
-    type: k.type,
-    maskedKey: k.keyPrefix,
-    lastUsed: k.lastUsed?.toISOString() ?? null,
-    createdAt: k.createdAt.toISOString(),
-  }));
-
-  const serializedLogs = webhookLogs.map((log) => ({
-    id: log.id,
-    url: log.url,
-    payload: log.payload,
-    status: log.status,
-    success: log.success,
-    duration: log.duration,
-    retryCount: log.retryCount,
-    nextRetryAt: log.nextRetryAt?.toISOString() ?? null,
-    paymentId: log.paymentId,
-    createdAt: log.createdAt.toISOString(),
-  }));
-
+export default function DevelopersPage() {
   const baseUrl = SITE_URL;
 
   const quickStartCode = `curl -X POST ${baseUrl}/api/v1/payment/create \\
@@ -108,79 +66,97 @@ export default async function DevelopersPage() {
           Developers
         </h1>
         <p className="text-xs text-muted mt-0.5">
-          API keys, webhooks, and integration guides
+          API keys, webhooks, widget integration, and white-label configuration
         </p>
       </div>
 
-      {/* Quick Start */}
-      <section data-animate className="rounded-xl border border-border bg-elevated p-6">
-        <h2 className="font-heading text-lg font-semibold tracking-tight">
-          Quick Start
-        </h2>
-        <p className="mt-1 text-sm text-foreground-secondary">
-          Create a payment invoice with a single API call. Replace{" "}
-          <code className="font-mono text-xs text-primary">YOUR_API_KEY</code>{" "}
-          with a key generated below.
-        </p>
-
-        <div className="mt-4">
-          <QuickStartCodeClient code={quickStartCode} />
-        </div>
-
-        <div className="mt-4 flex items-center gap-2">
-          <span className="text-xs font-medium text-foreground-secondary">
-            Base URL
-          </span>
-          <BaseUrlCopy baseUrl={baseUrl} />
-        </div>
-      </section>
-
-      {/* API Keys */}
+      {/* Tabs */}
       <div data-animate>
-        <ApiKeysManager keys={maskedKeys} />
-      </div>
+        <DevelopersTabs
+          tabs={{
+            api: (
+              <div className="space-y-8">
+                {/* Quick Start */}
+                <section className="rounded-xl border border-border bg-elevated p-6">
+                  <h2 className="font-heading text-lg font-semibold tracking-tight">
+                    Quick Start
+                  </h2>
+                  <p className="mt-1 text-sm text-foreground-secondary">
+                    Create a payment invoice with a single API call. Replace{" "}
+                    <code className="font-mono text-xs text-primary">
+                      YOUR_API_KEY
+                    </code>{" "}
+                    with a key generated below.
+                  </p>
 
-      {/* Webhooks */}
-      <div data-animate>
-        <WebhookManager
-          currentUrl={user.webhookUrl}
-          webhookSecret={maskedSecret}
-          initialLogs={serializedLogs}
+                  <div className="mt-4">
+                    <QuickStartCodeClient code={quickStartCode} />
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground-secondary">
+                      Base URL
+                    </span>
+                    <BaseUrlCopy baseUrl={baseUrl} />
+                  </div>
+                </section>
+
+                {/* API Keys */}
+                <ApiKeysManager keys={[]} />
+
+                {/* Webhooks */}
+                <WebhookManager
+                  currentUrl={null}
+                  webhookSecret={null}
+                  initialLogs={[]}
+                />
+
+                {/* API Reference Cards */}
+                <div>
+                  <h2 className="font-heading text-lg font-semibold tracking-tight mb-4">
+                    API Reference
+                  </h2>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <EndpointCard
+                      method="POST"
+                      path="/api/v1/payment/create"
+                      description="Create a new payment invoice with amount, currency, and crypto selection."
+                      snippet={createPaymentBody}
+                    />
+                    <EndpointCard
+                      method="GET"
+                      path="/api/v1/payment/:trackId"
+                      description="Check the current status and details of an existing payment."
+                      snippet={paymentStatusResponse}
+                    />
+                    <EndpointCard
+                      method="GET"
+                      path="/api/v1/currencies"
+                      description="List all supported cryptocurrencies and chain configurations."
+                      snippet={currenciesResponse}
+                    />
+                  </div>
+                </div>
+              </div>
+            ),
+            widget: (
+              <WidgetEmbed publishableKey={null} siteUrl={baseUrl} />
+            ),
+            whitelabel: (
+              <WhiteLabel
+                initialBranding={EMPTY_BRANDING}
+                siteUrl={baseUrl}
+              />
+            ),
+          }}
         />
-      </div>
-
-      {/* API Reference Cards */}
-      <div data-animate>
-        <h2 className="font-heading text-lg font-semibold tracking-tight mb-4">
-          API Reference
-        </h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <EndpointCard
-            method="POST"
-            path="/api/v1/payment/create"
-            description="Create a new payment invoice with amount, currency, and crypto selection."
-            snippet={createPaymentBody}
-          />
-          <EndpointCard
-            method="GET"
-            path="/api/v1/payment/:trackId"
-            description="Check the current status and details of an existing payment."
-            snippet={paymentStatusResponse}
-          />
-          <EndpointCard
-            method="GET"
-            path="/api/v1/currencies"
-            description="List all supported cryptocurrencies and chain configurations."
-            snippet={currenciesResponse}
-          />
-        </div>
       </div>
     </DevelopersShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Server sub-components (no interactivity — stay in the same file)  */
+/*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
 
 function EndpointCard({
@@ -211,9 +187,7 @@ function EndpointCard({
           {path}
         </span>
       </div>
-      <p className="mt-2 text-sm text-muted leading-relaxed">
-        {description}
-      </p>
+      <p className="mt-2 text-sm text-muted leading-relaxed">{description}</p>
       <pre className="mt-3 flex-1 rounded-lg bg-surface border border-border p-3 overflow-x-auto">
         <code className="font-mono text-xs text-foreground-secondary leading-relaxed whitespace-pre">
           {snippet}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { WidgetProvider } from "@/hooks/use-widget-context";
-import { isAuthenticated, getMerchant } from "@/hooks/useAuth";
+import { isAuthenticated, getMerchant, getToken } from "@/hooks/useAuth";
 
 export default function DashboardLayout({
   children,
@@ -22,14 +22,33 @@ export default function DashboardLayout({
       return;
     }
 
-    getMerchant().then((m) => {
-      if (!m) {
-        router.replace("/login");
-        return;
-      }
-      setMerchantEmail(m.email);
-      setReady(true);
-    });
+    getMerchant()
+      .then((m) => {
+        if (m) {
+          setMerchantEmail(m.email);
+        } else {
+          // Backend unreachable — fall back to JWT claims
+          try {
+            const token = getToken();
+            if (token) {
+              const payload = JSON.parse(atob(token.split(".")[1]));
+              setMerchantEmail(payload.email || null);
+            }
+          } catch { /* ignore */ }
+        }
+        setReady(true);
+      })
+      .catch(() => {
+        // Network error — still allow access with valid JWT
+        try {
+          const token = getToken();
+          if (token) {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            setMerchantEmail(payload.email || null);
+          }
+        } catch { /* ignore */ }
+        setReady(true);
+      });
   }, [router]);
 
   if (!ready) {
