@@ -55,6 +55,8 @@ export const INVOICE_STATUSES = [
 ] as const;
 
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+/** @deprecated Use InvoiceStatus instead */
+export type PaymentStatus = InvoiceStatus;
 
 export const NAV_LINKS = [
   { label: "Products", href: "#products" },
