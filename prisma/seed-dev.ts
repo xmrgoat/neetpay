@@ -13,25 +13,23 @@ async function main() {
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
 
-  const existing = await prisma.user.findUnique({ where: { email: EMAIL } });
+  const existing = await prisma.merchant.findUnique({ where: { email: EMAIL } });
   if (existing) {
-    console.log(`User ${EMAIL} already exists (id: ${existing.id})`);
+    console.log(`Merchant ${EMAIL} already exists (id: ${existing.id})`);
     await pool.end();
     return;
   }
 
   const hashedPassword = await hash(PASSWORD, 12);
 
-  const user = await prisma.user.create({
+  const merchant = await prisma.merchant.create({
     data: {
       email: EMAIL,
       hashedPassword,
-      name: "Dev",
-      plan: "pro",
     },
   });
 
-  console.log(`Created dev user: ${user.email} (id: ${user.id})`);
+  console.log(`Created dev merchant: ${merchant.email} (id: ${merchant.id})`);
   console.log(`Login: ${EMAIL} / ${PASSWORD}`);
   await pool.end();
 }
