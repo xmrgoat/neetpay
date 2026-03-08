@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { verifyMagicLink } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -9,14 +8,13 @@ import Link from "next/link";
 type State = "verifying" | "success" | "error";
 
 export default function VerifyContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const [state, setState] = useState<State>("verifying");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const email = searchParams.get("email");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const email = params.get("email");
 
     if (!token || !email) {
       setError("Missing token or email");
@@ -34,12 +32,12 @@ export default function VerifyContent() {
       setState("success");
 
       if (result.is_new) {
-        router.push("/onboarding");
+        window.location.href = "/onboarding";
       } else {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     });
-  }, [searchParams, router]);
+  }, []);
 
   if (state === "verifying") {
     return (
