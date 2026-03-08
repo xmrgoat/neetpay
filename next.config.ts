@@ -3,9 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
-  experimental: {
-    missingSuspenseWithCSRBailout: false,
-  },
   async headers() {
     return [
       {
